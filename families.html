@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Family Tree - Generations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #fff;
+        margin: 0;
+        padding: 20px;
+        color: #000;
+        padding-top: 100px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .generation-bar {
+        background: #000;
+        color: #fff;
+        padding: 20px 25px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      .members-container {
+        display: none;
+        margin-bottom: 20px;
+        padding-left: 15px;
+        border-left: 2px solid #000;
+      }
+
+      .member-box {
+        background: #f9f9f9;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin: 8px 0;
+        cursor: pointer;
+        transition: background 0.3s;
+        position: relative;
+      }
+
+      .member-box:hover {
+        background: #eaeaea;
+      }
+
+      .member-actions {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        gap: 5px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .member-box:hover .member-actions {
+        opacity: 1;
+      }
+
+      .action-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        transition: all 0.3s;
+      }
+
+      .edit-btn {
+        background: #000;
+        color: white;
+      }
+
+      .edit-btn:hover {
+        background: #333;
+        transform: scale(1.1);
+      }
+
+      .delete-btn {
+        background: #dc3545;
+        color: white;
+      }
+
+      .delete-btn:hover {
+        background: #c82333;
+        transform: scale(1.1);
+      }
+
+      .children-container {
+        margin-left: 20px;
+        margin-top: 10px;
+        padding-left: 15px;
+        border-left: 1px dashed #000;
+      }
+
+      /* Popup Styles */
+      .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      .popup-content {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        animation: popupSlide 0.3s ease-out;
+      }
+
+      @keyframes popupSlide {
+        from {
+          transform: translateY(-50px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .popup-close {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #666;
+        transition: color 0.3s;
+        z-index: 1;
+      }
+
+      .popup-close:hover {
+        color: #000;
+      }
+
+      .member-info {
+        width: 100%;
+      }
+
+      .details-with-avatar {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      .details-section {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .avatar-container {
+        flex-shrink: 0;
+        width: 120px;
+        height: 120px;
+        background: #f0f0f0;
+        border-radius: 15px;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #ddd;
+      }
+
+      .avatar-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .avatar-image:hover {
+        transform: scale(1.05);
+      }
+
+      .avatar-iframe {
+        width: 100%;
+        height: 100%;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .avatar-iframe:hover {
+        transform: scale(1.05);
+      }
+
+      .avatar-placeholder {
+        color: #999;
+        text-align: center;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .member-details h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: #333;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+      }
+
+      .detail-row {
+        display: flex;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #f8f8f8;
+        border-radius: 8px;
+      }
+
+      .detail-label {
+        font-weight: bold;
+        min-width: 120px;
+        color: #555;
+      }
+
+      .detail-value {
+        color: #000;
+        flex: 1;
+      }
+
+      .family-links {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+      }
+
+      .family-links h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .family-link {
+        display: inline-block;
+        background: #000;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 20px;
+        margin: 3px;
+        cursor: pointer;
+        transition: background 0.3s;
+        font-size: 0.9em;
+      }
+
+      .family-link:hover {
+        background: #333;
+      }
+
+      /* Image Modal Styles */
+      .image-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 3000;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .image-modal-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 90%;
+        width: auto;
+        height: auto;
+      }
+
+      .image-modal img {
+        width: 100%;
+        height: 100%;
+        max-width: 90vw;
+        max-height: 90vh;
+        object-fit: contain;
+        border: none;
+        border-radius: 8px;
+      }
+
+      .image-modal-close {
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        cursor: pointer;
+        color: #333;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .image-modal-close:hover {
+        background: white;
+        transform: scale(1.1);
+      }
+
+      /* Form Styles */
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .form-input,
+      .form-select,
+      .form-textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .form-input:focus,
+      .form-select:focus,
+      .form-textarea:focus {
+        outline: none;
+        border-color: #000;
+      }
+
+      .form-textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+
+      .form-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+      }
+
+      .form-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+
+      .form-btn-primary {
+        background: #000;
+        color: white;
+      }
+
+      .form-btn-primary:hover {
+        background: #333;
+      }
+
+      .form-btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .form-btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .form-btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+
+      .form-btn-danger:hover {
+        background: #c82333;
+      }
+
+      /* Confirmation Dialog */
+      .confirm-dialog {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      .confirm-dialog h3 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      .confirm-dialog p {
+        color: #666;
+        margin-bottom: 20px;
+      }
+
+      .confirm-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 20px;
+        }
+
+        .popup-content {
+          padding: 20px;
+          margin: 10px;
+        }
+
+        .details-with-avatar {
+          gap: 15px;
+        }
+
+        .avatar-container {
+          width: 80px;
+          height: 80px;
+        }
+
+        .detail-row {
+          flex-direction: column;
+        }
+
+        .detail-label {
+          min-width: auto;
+          margin-bottom: 5px;
+        }
+
+        .member-actions {
+          opacity: 1;
+        }
+      }
+
+      /* Navigation */
+      .navbar {
+        background: black;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+      }
+
+      .nav-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 2rem;
+        margin-bottom: -10px;
+      }
+
+      .nav-logo {
+        color: white;
+        font-size: 1.8rem;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .nav-menu {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .nav-btn {
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .nav-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .nav-btn:hover::before {
+        left: 100%;
+      }
+
+      .nav-btn:hover {
+        border-color: white;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .nav-btn.active {
+        background: white;
+        color: #333;
+        border-color: white;
+        box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+      }
+
+      .add-member-btn {
+        background: white;
+        color: #333;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+      }
+
+      .add-member-btn:hover {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
+      }
+
+      a {
+        color: white;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <h1 class="nav-logo">Poduri's</h1>
+        <div class="nav-menu">
+          <button
+            class="add-member-btn"
+            onclick="showAddMemberForm()"
+            title="Add Member"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <h1>Family Tree by Generations</h1>
+    <div id="family-tree"></div>
+
+    <!-- Popup Modal -->
+    <div id="popup-overlay" class="popup-overlay">
+      <div class="popup-content">
+        <button class="popup-close" onclick="closePopup()">&times;</button>
+        <div class="member-info">
+          <div id="member-details" class="member-details">
+            <!-- Member details will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="image-modal" class="image-modal">
+      <div class="image-modal-content">
+        <button class="image-modal-close" onclick="closeImageModal()">
+          &times;
+        </button>
+        <div id="image-modal-media">
+          <!-- Image or iframe will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <script src="mongodb-client.js"></script>
+    <script>
+      window.addEventListener("familyDataLoaded", function () {
+        renderFamilyTree();
+      });
+
+      function renderFamilyTree() {
+        const treeContainer = document.getElementById("family-tree");
+        treeContainer.innerHTML = "";
+
+        const generations = {};
+        familyData.family.forEach((member) => {
+          if (!generations[member.generation])
+            generations[member.generation] = [];
+          generations[member.generation].push(member);
+        });
+
+        const sortedGenerations = Object.keys(generations).sort(
+          (a, b) => a - b
+        );
+
+        sortedGenerations.forEach((gen) => {
+          const bar = document.createElement("div");
+          bar.className = "generation-bar";
+          bar.textContent = `Generation ${gen}`;
+          treeContainer.appendChild(bar);
+
+          const memberDiv = document.createElement("div");
+          memberDiv.className = "members-container";
+
+          const processed = new Set();
+
+          generations[gen].forEach((member) => {
+            if (processed.has(member.id)) return;
+
+            const spouse = member.spouseId
+              ? familyData.family.find((m) => m.id === member.spouseId)
+              : null;
+
+            let boxText = "";
+            let memberIds = [member.id];
+
+            if (spouse && !processed.has(spouse.id)) {
+              const [first, second] =
+                member.gender === "male" ? [member, spouse] : [spouse, member];
+
+              boxText = `${first.name} ${getLifeStatus(first)}, ${
+                second.name
+              } ${getLifeStatus(second)}`;
+              memberIds = [first.id, second.id];
+              processed.add(first.id);
+              processed.add(second.id);
+            } else {
+              boxText = `${member.name} ${getLifeStatus(member)}`;
+              processed.add(member.id);
+            }
+
+            const box = document.createElement("div");
+            box.className = "member-box";
+            box.innerHTML = `
+              <div>${boxText}</div>
+              <div class="member-actions">
+                <button class="action-btn edit-btn" onclick="showEditMemberForm(${member.id})" title="Edit Member">
+                  ✎
+                </button>
+                <button class="action-btn delete-btn" onclick="confirmDeleteMember(${member.id})" title="Delete Member">
+                  🗑
+                </button>
+              </div>
+            `;
+
+            // Add click event for popup
+            box.addEventListener("click", (e) => {
+              e.stopPropagation();
+
+              // Don't show popup if clicking on action buttons
+              if (e.target.closest(".member-actions")) {
+                return;
+              }
+
+              // Check if clicking on children container
+              if (e.target.closest(".children-container")) {
+                return;
+              }
+
+              // Toggle children if they exist and are already displayed
+              if (box.querySelector(".children-container")) {
+                const cc = box.querySelector(".children-container");
+                if (e.target === cc || cc.contains(e.target)) {
+                  return;
+                }
+                cc.style.display =
+                  cc.style.display === "none" ? "block" : "none";
+                return;
+              }
+
+              // Show popup for main member
+              showMemberPopup(member);
+            });
+
+            // Add double-click event for children
+            box.addEventListener("dblclick", (e) => {
+              e.stopPropagation();
+
+              // Don't show children if clicking on action buttons
+              if (e.target.closest(".member-actions")) {
+                return;
+              }
+
+              const children = familyData.family.filter(
+                (m) =>
+                  m.parentId === member.id ||
+                  (spouse && m.parentId === spouse.id)
+              );
+
+              if (
+                children.length > 0 &&
+                !box.querySelector(".children-container")
+              ) {
+                const cc = document.createElement("div");
+                cc.className = "children-container";
+
+                children.forEach((child) => {
+                  const childText = `${child.name} ${getLifeStatus(child)}`;
+                  const childBox = document.createElement("div");
+                  childBox.className = "member-box";
+                  childBox.innerHTML = `
+                    <div>${childText}</div>
+                    <div class="member-actions">
+                      <button class="action-btn edit-btn" onclick="showEditMemberForm(${child.id})" title="Edit Member">
+                        ✏️
+                      </button>
+                      <button class="action-btn delete-btn" onclick="confirmDeleteMember(${child.id})" title="Delete Member">
+                        🗑️
+                      </button>
+                    </div>
+                  `;
+
+                  // Add click event for child popup
+                  childBox.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (!e.target.closest(".member-actions")) {
+                      showMemberPopup(child);
+                    }
+                  });
+
+                  cc.appendChild(childBox);
+                });
+                box.appendChild(cc);
+              }
+            });
+
+            memberDiv.appendChild(box);
+          });
+
+          bar.addEventListener("click", () => {
+            memberDiv.style.display =
+              memberDiv.style.display === "none" ? "block" : "none";
+          });
+
+          treeContainer.appendChild(memberDiv);
+        });
+      }
+
+      function getLifeStatus(member) {
+        if (member.deathDate) return "(Died)";
+        if (!member.birthDate) return "(Unknown)";
+        const age =
+          new Date().getFullYear() - new Date(member.birthDate).getFullYear();
+        return `(${age} Years)`;
+      }
+
+      function openImageModal(src, alt = "") {
+        const modal = document.getElementById("image-modal");
+        const mediaContainer = document.getElementById("image-modal-media");
+
+        mediaContainer.innerHTML = `<img src="${src}" alt="${alt}">`;
+
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeImageModal() {
+        const modal = document.getElementById("image-modal");
+        modal.style.display = "none";
+        document.body.style.overflow = "auto";
+      }
+
+      function formatDate(dateString) {
+        if (!dateString) return "Unknown";
+
+        const date = new Date(dateString);
+        const months = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+        const month = months[date.getMonth()];
+        const day = date.getDate();
+        const year = date.getFullYear();
+
+        return `${month} ${day}, ${year}`;
+      }
+
+      function showMemberPopup(member) {
+        const popup = document.getElementById("popup-overlay");
+        const detailsContainer = document.getElementById("member-details");
+
+        // Find related family members
+        const spouse = member.spouseId
+          ? familyData.family.find((m) => m.id === member.spouseId)
+          : null;
+        const parent = member.parentId
+          ? familyData.family.find((m) => m.id === member.parentId)
+          : null;
+        const children = familyData.family.filter(
+          (m) => m.parentId === member.id
+        );
+        const siblings = member.parentId
+          ? familyData.family.filter(
+              (m) => m.parentId === member.parentId && m.id !== member.id
+            )
+          : [];
+
+        // Calculate age
+        let ageText = "Unknown";
+        if (member.birthDate) {
+          const birthYear = new Date(member.birthDate).getFullYear();
+          const currentYear = member.deathDate
+            ? new Date(member.deathDate).getFullYear()
+            : new Date().getFullYear();
+          ageText = `${currentYear - birthYear} years`;
+          if (member.deathDate) {
+            ageText += " (at death)";
+          }
+        }
+
+        detailsContainer.innerHTML = `
+        <h2>${member.name}</h2>
+
+        <div class="details-with-avatar">
+          <div class="details-section">
+            <div class="detail-row">
+              <div class="detail-label">Birth Date:</div>
+              <div class="detail-value">${formatDate(member.birthDate)}</div>
+            </div>
+
+            ${
+              member.deathDate
+                ? `
+            <div class="detail-row">
+              <div class="detail-label">Death Date:</div>
+              <div class="detail-value">${formatDate(member.deathDate)}</div>
+            </div>
+            `
+                : ""
+            }
+
+            <div class="detail-row">
+              <div class="detail-label">Age:</div>
+              <div class="detail-value">${ageText}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Generation:</div>
+              <div class="detail-value">${member.generation}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Status:</div>
+              <div class="detail-value">${
+                member.deathDate ? "Deceased" : "Living"
+              }</div>
+            </div>
+          </div>
+
+          <div class="avatar-container">
+            ${
+              member.avatar
+                ? `<img src="${member.avatar}" alt="${member.name}" class="avatar-image" onclick="openImageModal('${member.avatar}', '${member.name}')" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                 <div class="avatar-placeholder" style="display: none;">No Image Available</div>`
+                : `<div class="avatar-placeholder">No Image Available</div>`
+            }
+          </div>
+        </div>
+
+        ${
+          spouse || parent || children.length > 0 || siblings.length > 0
+            ? `
+        <div class="family-links">
+          ${
+            spouse
+              ? `
+          <h3>Spouse</h3>
+          <span class="family-link" onclick="showMemberPopup(familyData.family.find(m => m.id === ${spouse.id}))">${spouse.name}</span>
+          `
+              : ""
+          }
+
+          ${
+            parent
+              ? `
+          <h3>Parent</h3>
+          <span class="family-link" onclick="showMemberPopup(familyData.family.find(m => m.id === ${parent.id}))">${parent.name}</span>
+          `
+              : ""
+          }
+
+          ${
+            children.length > 0
+              ? `
+          <h3>Children</h3>
+          ${children
+            .map(
+              (child) =>
+                `<span class="family-link" onclick="showMemberPopup(familyData.family.find(m => m.id === ${child.id}))">${child.name}</span>`
+            )
+            .join("")}
+          `
+              : ""
+          }
+
+          ${
+            siblings.length > 0
+              ? `
+          <h3>Siblings</h3>
+          ${siblings
+            .map(
+              (sibling) =>
+                `<span class="family-link" onclick="showMemberPopup(familyData.family.find(m => m.id === ${sibling.id}))">${sibling.name}</span>`
+            )
+            .join("")}
+          `
+              : ""
+          }
+        </div>
+        `
+            : ""
+        }
+      `;
+
+        popup.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      function showAddMemberForm() {
+        const popup = document.getElementById("popup-overlay");
+        const detailsContainer = document.getElementById("member-details");
+
+        detailsContainer.innerHTML = `
+          <h2>Add New Family Member</h2>
+          <form id="member-form" onsubmit="handleAddMember(event)">
+            <div class="form-group">
+              <label class="form-label">Name *</label>
+              <input type="text" name="name" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Gender *</label>
+              <select name="gender" class="form-select" required>
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Birth Date</label>
+              <input type="date" name="birthDate" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Death Date</label>
+              <input type="date" name="deathDate" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Generation *</label>
+              <input type="number" name="generation" class="form-input" min="1" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent</label>
+              <select name="parentId" class="form-select">
+                <option value="">Select Parent</option>
+                ${familyData.family
+                  .map((m) => `<option value="${m.id}">${m.name}</option>`)
+                  .join("")}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Spouse</label>
+              <select name="spouseId" class="form-select">
+                <option value="">Select Spouse</option>
+                ${familyData.family
+                  .map((m) => `<option value="${m.id}">${m.name}</option>`)
+                  .join("")}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Avatar URL</label>
+              <input type="url" name="avatar" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Occupation</label>
+              <input type="text" name="occupation" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" name="location" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea name="bio" class="form-textarea" placeholder="Brief biography..."></textarea>
+            </div>
+
+            <div class="form-buttons">
+              <button type="button" class="form-btn form-btn-secondary" onclick="closePopup()">Cancel</button>
+              <button type="submit" class="form-btn form-btn-primary">Add Member</button>
+            </div>
+          </form>
+        `;
+
+        popup.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      function showEditMemberForm(memberId) {
+        const member = familyData.family.find((m) => m.id === memberId);
+        if (!member) return;
+
+        const popup = document.getElementById("popup-overlay");
+        const detailsContainer = document.getElementById("member-details");
+
+        detailsContainer.innerHTML = `
+          <h2>Edit Family Member</h2>
+          <form id="member-form" onsubmit="handleEditMember(event, ${memberId})">
+            <div class="form-group">
+              <label class="form-label">Name *</label>
+              <input type="text" name="name" class="form-input" value="${
+                member.name
+              }" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Gender *</label>
+              <select name="gender" class="form-select" required>
+                <option value="">Select Gender</option>
+                <option value="male" ${
+                  member.gender === "male" ? "selected" : ""
+                }>Male</option>
+                <option value="female" ${
+                  member.gender === "female" ? "selected" : ""
+                }>Female</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Birth Date</label>
+              <input type="date" name="birthDate" class="form-input" value="${
+                member.birthDate || ""
+              }">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Death Date</label>
+              <input type="date" name="deathDate" class="form-input" value="${
+                member.deathDate || ""
+              }">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Generation *</label>
+              <input type="number" name="generation" class="form-input" min="1" value="${
+                member.generation
+              }" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent</label>
+              <select name="parentId" class="form-select">
+                <option value="">Select Parent</option>
+                ${familyData.family
+                  .filter((m) => m.id !== memberId)
+                  .map(
+                    (m) =>
+                      `<option value="${m.id}" ${
+                        m.id === member.parentId ? "selected" : ""
+                      }>${m.name}</option>`
+                  )
+                  .join("")}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Spouse</label>
+              <select name="spouseId" class="form-select">
+                <option value="">Select Spouse</option>
+                ${familyData.family
+                  .filter((m) => m.id !== memberId)
+                  .map(
+                    (m) =>
+                      `<option value="${m.id}" ${
+                        m.id === member.spouseId ? "selected" : ""
+                      }>${m.name}</option>`
+                  )
+                  .join("")}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Avatar URL</label>
+              <input type="url" name="avatar" class="form-input" value="${
+                member.avatar || ""
+              }">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Occupation</label>
+              <input type="text" name="occupation" class="form-input" value="${
+                member.occupation || ""
+              }">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" name="location" class="form-input" value="${
+                member.location || ""
+              }">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea name="bio" class="form-textarea" placeholder="Brief biography...">${
+                member.bio || ""
+              }</textarea>
+            </div>
+
+            <div class="form-buttons">
+              <button type="button" class="form-btn form-btn-secondary" onclick="closePopup()">Cancel</button>
+              <button type="submit" class="form-btn form-btn-primary">Update Member</button>
+            </div>
+          </form>
+        `;
+
+        popup.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      function confirmDeleteMember(memberId) {
+        const member = familyData.family.find((m) => m.id === memberId);
+        if (!member) return;
+
+        const popup = document.getElementById("popup-overlay");
+        const detailsContainer = document.getElementById("member-details");
+
+        detailsContainer.innerHTML = `
+          <div class="confirm-dialog">
+            <h3>Delete Family Member</h3>
+            <p>Are you sure you want to delete <strong>${member.name}</strong>?</p>
+            <p style="color: #dc3545; font-size: 14px;">This action cannot be undone.</p>
+            <div class="confirm-buttons">
+              <button class="form-btn form-btn-secondary" onclick="closePopup()">Cancel</button>
+              <button class="form-btn form-btn-danger" onclick="handleDeleteMember(${memberId})">Delete</button>
+            </div>
+          </div>
+        `;
+
+        popup.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+
+      async function handleAddMember(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+
+        const memberData = {
+          name: formData.get("name"),
+          gender: formData.get("gender"),
+          birthDate: formData.get("birthDate") || null,
+          deathDate: formData.get("deathDate") || null,
+          generation: parseInt(formData.get("generation")),
+          parentId: formData.get("parentId")
+            ? parseInt(formData.get("parentId"))
+            : null,
+          spouseId: formData.get("spouseId")
+            ? parseInt(formData.get("spouseId"))
+            : null,
+          avatar: formData.get("avatar") || null,
+          occupation: formData.get("occupation") || "",
+          location: formData.get("location") || "",
+          bio: formData.get("bio") || "",
+        };
+
+        try {
+          const result = await window.familyDataAPI.addMember(memberData);
+          if (result.success) {
+            await window.familyDataAPI.refreshData();
+            closePopup();
+            renderFamilyTree();
+            alert("Member added successfully!");
+          } else {
+            alert("Failed to add member: " + result.message);
+          }
+        } catch (error) {
+          console.error("Error adding member:", error);
+          alert("Error adding member. Please try again.");
+        }
+      }
+
+      async function handleEditMember(event, memberId) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+
+        const memberData = {
+          name: formData.get("name"),
+          gender: formData.get("gender"),
+          birthDate: formData.get("birthDate") || null,
+          deathDate: formData.get("deathDate") || null,
+          generation: parseInt(formData.get("generation")),
+          parentId: formData.get("parentId")
+            ? parseInt(formData.get("parentId"))
+            : null,
+          spouseId: formData.get("spouseId")
+            ? parseInt(formData.get("spouseId"))
+            : null,
+          avatar: formData.get("avatar") || null,
+          occupation: formData.get("occupation") || "",
+          location: formData.get("location") || "",
+          bio: formData.get("bio") || "",
+        };
+
+        try {
+          const result = await window.familyDataAPI.updateMember(
+            memberId,
+            memberData
+          );
+          if (result.success) {
+            await window.familyDataAPI.refreshData();
+            closePopup();
+            renderFamilyTree();
+            alert("Member updated successfully!");
+          } else {
+            alert("Failed to update member: " + result.message);
+          }
+        } catch (error) {
+          console.error("Error updating member:", error);
+          alert("Error updating member. Please try again.");
+        }
+      }
+
+      async function handleDeleteMember(memberId) {
+        try {
+          const result = await window.familyDataAPI.deleteMember(memberId);
+          if (result.success) {
+            await window.familyDataAPI.refreshData();
+            closePopup();
+            renderFamilyTree();
+            alert("Member deleted successfully!");
+          } else {
+            alert("Failed to delete member: " + result.message);
+          }
+        } catch (error) {
+          console.error("Error deleting member:", error);
+          alert("Error deleting member. Please try again.");
+        }
+      }
+
+      function closePopup() {
+        const popup = document.getElementById("popup-overlay");
+        popup.style.display = "none";
+        document.body.style.overflow = "auto";
+      }
+
+      // Close popup when clicking outside
+      document
+        .getElementById("popup-overlay")
+        .addEventListener("click", (e) => {
+          if (e.target.id === "popup-overlay") {
+            closePopup();
+          }
+        });
+
+      // Close popup with Escape key
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closePopup();
+          closeImageModal();
+        }
+      });
+
+      // Close image modal when clicking outside
+      document.getElementById("image-modal").addEventListener("click", (e) => {
+        if (e.target.id === "image-modal") {
+          closeImageModal();
+        }
+      });
+    </script>
+  </body>
+</html>

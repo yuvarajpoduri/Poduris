@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Private Image Gallery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: linear-gradient(
+          135deg,
+          #0c0c0c 0%,
+          #1a1a1a 50%,
+          #0c0c0c 100%
+        );
+        color: #ffffff;
+        font-family: "Segoe UI", "Arial", sans-serif;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      /* Animated background pattern */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: radial-gradient(
+            circle at 25% 25%,
+            rgba(255, 255, 255, 0.02) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 75% 75%,
+            rgba(255, 255, 255, 0.02) 0%,
+            transparent 50%
+          );
+        animation: backgroundFloat 20s ease-in-out infinite;
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      @keyframes backgroundFloat {
+        0%,
+        100% {
+          transform: translateY(0px) rotate(0deg);
+        }
+        50% {
+          transform: translateY(-20px) rotate(1deg);
+        }
+      }
+
+      /* Header */
+      .header {
+        text-align: center;
+        padding: 2rem 1rem;
+        position: relative;
+      }
+
+      .header h1 {
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 300;
+        letter-spacing: 3px;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(45deg, #ffffff, #cccccc);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: titleGlow 3s ease-in-out infinite alternate;
+      }
+
+      @keyframes titleGlow {
+        from {
+          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+        }
+        to {
+          filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
+        }
+      }
+
+      .header .subtitle {
+        font-size: 1rem;
+        color: #cccccc;
+        letter-spacing: 1px;
+        font-weight: 300;
+      }
+
+      /* Login Section */
+      #loginSection {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 3rem 2rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(255, 255, 255, 0.05);
+        animation: cardFloat 6s ease-in-out infinite;
+      }
+
+      @keyframes cardFloat {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .input-group {
+        position: relative;
+      }
+
+      .input-group i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #cccccc;
+        font-size: 1.1rem;
+      }
+
+      input {
+        width: 100%;
+        padding: 15px 20px 15px 50px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        color: #ffffff;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        outline: none;
+      }
+
+      input::placeholder {
+        color: #999999;
+      }
+
+      input:focus {
+        border-color: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+      }
+
+      button {
+        padding: 15px 30px;
+        background: linear-gradient(45deg, #333333, #555555);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      button::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      button:hover::before {
+        left: 100%;
+      }
+
+      button:hover {
+        background: linear-gradient(45deg, #555555, #777777);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+
+      .primary-btn {
+        background: linear-gradient(45deg, #ffffff, #cccccc) !important;
+        color: #000000 !important;
+      }
+
+      .primary-btn:hover {
+        background: linear-gradient(45deg, #cccccc, #aaaaaa) !important;
+      }
+
+      /* Upload Section */
+      #uploadSection {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .user-info {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .welcome-text {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+
+      .controls button {
+        padding: 12px 24px;
+        font-size: 0.95rem;
+      }
+
+      .refresh-btn {
+        background: linear-gradient(45deg, #1a73e8, #4285f4) !important;
+      }
+
+      .debug-btn {
+        background: linear-gradient(45deg, #ff6f00, #ff8f00) !important;
+      }
+
+      /* Event Form */
+      .event-form {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        backdrop-filter: blur(10px);
+      }
+
+      .event-form h3 {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.3rem;
+        font-weight: 300;
+        letter-spacing: 1px;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      /* Progress Bar */
+      .progress-container {
+        margin: 1rem 0;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffffff, #cccccc);
+        transition: width 0.3s ease;
+        border-radius: 10px;
+      }
+
+      /* Gallery Container */
+      #galleryContainer {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      /* Image Card */
+      .image-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        animation: cardSlideIn 0.6s ease-out;
+      }
+
+      @keyframes cardSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .image-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .image-container {
+        position: relative;
+        height: 250px;
+        overflow: hidden;
+      }
+
+      .image-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+      }
+
+      .image-card:hover img {
+        transform: scale(1.05);
+      }
+
+      /* Event Info */
+      .event-info {
+        padding: 1.5rem;
+      }
+
+      .event-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #ffffff;
+        text-align: center;
+      }
+
+      .image-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .meta-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #ffffff;
+        backdrop-filter: blur(5px);
+      }
+
+      .meta-tag i {
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+
+      .meta-tag.location {
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .meta-tag.date {
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 25%;
+        background: black;
+        color: white;
+        font-weight: bold;
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .delete-btn:hover {
+        background: rgba(0, 0, 0, 0.9);
+        transform: scale(1.1);
+      }
+
+      /* Status Messages */
+      .loading {
+        color: #ffffff;
+        text-align: center;
+        font-style: italic;
+        padding: 2rem;
+      }
+
+      .error {
+        color: #ff6b6b;
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 107, 107, 0.1);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        border-radius: 10px;
+        margin: 1rem 0;
+      }
+
+      .success {
+        color: #51cf66;
+        text-align: center;
+        padding: 1rem;
+        background: rgba(81, 207, 102, 0.1);
+        border: 1px solid rgba(81, 207, 102, 0.3);
+        border-radius: 10px;
+        margin: 1rem 0;
+      }
+
+      /* Debug Info */
+      .debug-info {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 1rem;
+        margin: 1rem 0;
+        font-size: 0.85rem;
+        font-family: "Courier New", monospace;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .header {
+          padding: 1.5rem 1rem;
+        }
+
+        #loginSection {
+          margin: 1rem;
+          padding: 2rem 1.5rem;
+        }
+
+        #uploadSection {
+          padding: 1rem;
+        }
+
+        .controls {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .controls button {
+          width: 100%;
+          max-width: 300px;
+        }
+
+        #galleryContainer {
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+        }
+
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .image-meta {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .meta-tag {
+          justify-content: center;
+          min-width: 120px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .header h1 {
+          font-size: 2rem;
+          letter-spacing: 1px;
+        }
+
+        .image-container {
+          height: 200px;
+        }
+
+        .event-info {
+          padding: 1rem;
+        }
+
+        .event-name {
+          font-size: 1.1rem;
+        }
+      }
+
+      /* Animations */
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .loading {
+        animation: pulse 2s infinite;
+      }
+
+      /* Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      /* Full Screen Image Viewer */
+      .fullscreen-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+      }
+
+      .fullscreen-content {
+        position: relative;
+        max-width: 95%;
+        max-height: 95%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .fullscreen-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 10px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .fullscreen-close {
+        position: absolute;
+        top: -50px;
+        right: -20px;
+        width: 40px;
+        height: 40px;
+        background: black;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        z-index: 1001;
+      }
+
+      .fullscreen-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+
+      @media (max-width: 768px) {
+        .fullscreen-close {
+          top: 20px;
+          right: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🎨 GALLERY</h1>
+      <p class="subtitle">Your Private Collection</p>
+    </div>
+
+    <!-- 🔐 Login Section -->
+    <div id="loginSection">
+      <div class="login-form">
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="email" placeholder="Enter your email" />
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input
+            type="password"
+            id="password"
+            placeholder="Enter your password"
+          />
+        </div>
+        <button class="primary-btn" onclick="login()">
+          <i class="fas fa-sign-in-alt"></i> Login to Gallery
+        </button>
+        <div id="loginError" class="error" style="display: none"></div>
+      </div>
+    </div>
+
+    <!-- 🚀 Upload & Gallery Section -->
+    <div id="uploadSection" style="display: none">
+      <div class="user-info">
+        <div class="welcome-text">Welcome <span id="userEmail"></span></div>
+        <button onclick="logout()" style="padding: 8px 20px; font-size: 0.9rem">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+
+      <!-- Event Information Form -->
+      <div class="event-form">
+        <h3><i class="fas fa-calendar-alt"></i> Add Event Details</h3>
+        <div class="form-row">
+          <div class="input-group">
+            <i class="fas fa-calendar"></i>
+            <input
+              type="text"
+              id="eventName"
+              placeholder="Event name (e.g., Birthday Party)"
+            />
+          </div>
+          <div class="input-group">
+            <i class="fas fa-map-marker-alt"></i>
+            <input
+              type="text"
+              id="eventLocation"
+              placeholder="Location (e.g., Penugonda)"
+            />
+          </div>
+        </div>
+        <div class="input-group">
+          <i class="fas fa-images"></i>
+          <input type="file" id="imageInput" accept="image/*" multiple />
+        </div>
+        <button
+          class="primary-btn"
+          onclick="uploadImages()"
+          style="width: 100%"
+        >
+          <i class="fas fa-cloud-upload-alt"></i> Upload Images
+        </button>
+      </div>
+
+      <div class="controls">
+        <button class="refresh-btn" onclick="loadImages()">
+          <i class="fas fa-sync-alt"></i> Refresh Gallery
+        </button>
+      </div>
+
+      <div id="uploadStatus"></div>
+      <div
+        id="progressContainer"
+        class="progress-container"
+        style="display: none"
+      >
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+        </div>
+        <div id="progressText" style="text-align: center; margin-top: 5px">
+          0%
+        </div>
+      </div>
+      <div id="debugInfo" class="debug-info" style="display: none"></div>
+
+      <div id="galleryContainer"></div>
+    </div>
+
+    <!-- 📦 Firebase & App Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDAsXsHe0vGM9n5pHFdDvDyfrv53aBKHy8",
+        authDomain: "hapojx.firebaseapp.com",
+        databaseURL: "https://hapojx-default-rtdb.firebaseio.com",
+        projectId: "hapojx",
+        storageBucket: "hapojx.appspot.com",
+        messagingSenderId: "313167661339",
+        appId: "1:313167661339:web:e192e0471ff1c979b4abbe",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.database();
+      const storage = firebase.storage();
+
+      const loginSection = document.getElementById("loginSection");
+      const uploadSection = document.getElementById("uploadSection");
+      const galleryContainer = document.getElementById("galleryContainer");
+      const userEmail = document.getElementById("userEmail");
+      const loginError = document.getElementById("loginError");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const progressContainer = document.getElementById("progressContainer");
+      const progressFill = document.getElementById("progressFill");
+      const progressText = document.getElementById("progressText");
+      const debugInfo = document.getElementById("debugInfo");
+
+      let debugMode = false;
+
+      function debugLog(message, data = null) {
+        console.log(message, data);
+        if (debugMode) {
+          const timestamp = new Date().toLocaleTimeString();
+          debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+          if (data) {
+            debugInfo.innerHTML += `<div style="margin-left: 20px; color: #888;">${JSON.stringify(
+              data,
+              null,
+              2
+            )}</div>`;
+          }
+          debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+      }
+
+      window.toggleDebug = function () {
+        debugMode = !debugMode;
+        debugInfo.style.display = debugMode ? "block" : "none";
+        if (!debugMode) {
+          debugInfo.innerHTML = "";
+        }
+      };
+
+      window.login = function () {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        if (!email || !password) {
+          showError("loginError", "❌ Please enter both email and password");
+          return;
+        }
+
+        hideError("loginError");
+        debugLog("Attempting login for:", email);
+
+        auth
+          .signInWithEmailAndPassword(email, password)
+          .then(() => {
+            debugLog("✅ Logged in successfully!");
+            hideError("loginError");
+          })
+          .catch((err) => {
+            debugLog("Login error:", err);
+            showError("loginError", "❌ Login Failed: " + err.message);
+          });
+      };
+
+      window.logout = function () {
+        auth
+          .signOut()
+          .then(() => debugLog("✅ Logged out"))
+          .catch((err) => debugLog("Logout error:", err));
+      };
+
+      window.uploadImages = function () {
+        const files = document.getElementById("imageInput").files;
+        const eventName = document.getElementById("eventName").value.trim();
+        const eventLocation = document
+          .getElementById("eventLocation")
+          .value.trim();
+
+        if (files.length === 0) {
+          uploadStatus.innerHTML =
+            '<div class="error">❌ Please select at least one image.</div>';
+          return;
+        }
+
+        if (!eventName) {
+          uploadStatus.innerHTML =
+            '<div class="error">❌ Please enter an event name.</div>';
+          return;
+        }
+
+        if (!auth.currentUser) {
+          uploadStatus.innerHTML =
+            '<div class="error">❌ You must be logged in!</div>';
+          return;
+        }
+
+        debugLog(
+          `Starting upload of ${files.length} files with event: ${eventName}`
+        );
+
+        for (let file of files) {
+          if (file.size > 50 * 1024 * 1024) {
+            uploadStatus.innerHTML =
+              '<div class="error">❌ File "' +
+              file.name +
+              '" is too large. Please select images under 50MB.</div>';
+            return;
+          }
+        }
+
+        uploadMultipleImages(files, eventName, eventLocation);
+      };
+
+      async function uploadMultipleImages(files, eventName, eventLocation) {
+        uploadStatus.innerHTML =
+          '<div class="loading">⏳ Uploading images...</div>';
+        progressContainer.style.display = "block";
+
+        const totalFiles = files.length;
+        let completedFiles = 0;
+        let errors = [];
+
+        for (let i = 0; i < files.length; i++) {
+          try {
+            debugLog(`Uploading file ${i + 1}/${totalFiles}:`, files[i].name);
+            await uploadSingleImage(files[i], eventName, eventLocation);
+            completedFiles++;
+            debugLog(`✅ Successfully uploaded: ${files[i].name}`);
+          } catch (error) {
+            debugLog(`❌ Failed to upload ${files[i].name}:`, error);
+            errors.push(`${files[i].name}: ${error.message}`);
+            completedFiles++;
+          }
+
+          const progress = Math.round((completedFiles / totalFiles) * 100);
+          progressFill.style.width = progress + "%";
+          progressText.textContent = progress + "%";
+        }
+
+        progressContainer.style.display = "none";
+
+        if (errors.length === 0) {
+          uploadStatus.innerHTML =
+            '<div class="success">✅ All images uploaded successfully!</div>';
+        } else if (errors.length < totalFiles) {
+          uploadStatus.innerHTML = `<div style="color: #ffaa00;">⚠️ ${
+            totalFiles - errors.length
+          } images uploaded successfully, ${errors.length} failed</div>`;
+        } else {
+          uploadStatus.innerHTML =
+            '<div class="error">❌ All uploads failed</div>';
+        }
+
+        document.getElementById("imageInput").value = "";
+        document.getElementById("eventName").value = "";
+        document.getElementById("eventLocation").value = "";
+
+        setTimeout(() => {
+          uploadStatus.innerHTML = "";
+          loadImages();
+        }, 2000);
+      }
+
+      function uploadSingleImage(file, eventName, eventLocation) {
+        return new Promise((resolve, reject) => {
+          uploadAsBase64(file, eventName, eventLocation)
+            .then(resolve)
+            .catch((base64Error) => {
+              debugLog(
+                "Base64 upload failed, trying Firebase Storage:",
+                base64Error
+              );
+              uploadToFirebaseStorage(file, eventName, eventLocation)
+                .then(resolve)
+                .catch(reject);
+            });
+        });
+      }
+
+      function uploadToFirebaseStorage(file, eventName, eventLocation) {
+        return new Promise((resolve, reject) => {
+          const timestamp = Date.now();
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const fileName = `${timestamp}_${cleanFileName}`;
+          const userFolder = auth.currentUser.uid;
+          const storageRef = storage.ref(`images/${userFolder}/${fileName}`);
+
+          const metadata = {
+            contentType: file.type,
+            customMetadata: {
+              uploadedBy: auth.currentUser.email,
+              originalName: file.name,
+              eventName: eventName,
+              eventLocation: eventLocation || "",
+            },
+          };
+
+          const uploadTask = storageRef.put(file, metadata);
+
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress =
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              debugLog(`Upload progress: ${progress.toFixed(1)}%`);
+            },
+            (error) => {
+              debugLog("Firebase Storage upload error:", error);
+              reject(error);
+            },
+            () => {
+              uploadTask.snapshot.ref
+                .getDownloadURL()
+                .then((downloadURL) => {
+                  const imageData = {
+                    user: auth.currentUser.email,
+                    userId: auth.currentUser.uid,
+                    url: downloadURL,
+                    filename: file.name,
+                    timestamp: timestamp,
+                    size: file.size,
+                    type: "storage",
+                    eventName: eventName,
+                    eventLocation: eventLocation || "",
+                    uploadDate: new Date().toISOString(),
+                  };
+
+                  const imageRef = db.ref("images").push();
+                  return imageRef.set(imageData).then(() => {
+                    debugLog("✅ Storage image saved to database:", imageData);
+                    resolve(downloadURL);
+                  });
+                })
+                .catch((error) => {
+                  debugLog("Error saving storage image to database:", error);
+                  reject(error);
+                });
+            }
+          );
+        });
+      }
+
+      function uploadAsBase64(file, eventName, eventLocation) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = function () {
+            const base64Data = reader.result;
+            const timestamp = Date.now();
+
+            const imageData = {
+              user: auth.currentUser.email,
+              userId: auth.currentUser.uid,
+              image: base64Data,
+              filename: file.name,
+              timestamp: timestamp,
+              size: file.size,
+              type: "base64",
+              eventName: eventName,
+              eventLocation: eventLocation || "",
+              uploadDate: new Date().toISOString(),
+            };
+
+            const imageRef = db.ref("images").push();
+
+            imageRef
+              .set(imageData)
+              .then(() => {
+                debugLog("✅ Base64 image saved to database:", {
+                  filename: file.name,
+                  size: file.size,
+                  type: "base64",
+                  eventName: eventName,
+                });
+                resolve(base64Data);
+              })
+              .catch((error) => {
+                debugLog("Error saving base64 image to database:", error);
+                reject(error);
+              });
+          };
+
+          reader.onerror = function () {
+            reject(new Error("Error reading file"));
+          };
+
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function loadImages() {
+        if (!auth.currentUser) {
+          galleryContainer.innerHTML =
+            '<div class="error">❌ Please log in to view images</div>';
+          return;
+        }
+
+        debugLog("🔄 Loading images for user:", auth.currentUser.email);
+        galleryContainer.innerHTML =
+          '<div class="loading">⏳ Loading your royal collection...</div>';
+
+        const imagesRef = db.ref("images");
+
+        imagesRef
+          .once("value")
+          .then((snapshot) => {
+            debugLog("📊 Database snapshot received");
+            galleryContainer.innerHTML = "";
+
+            if (!snapshot.exists()) {
+              debugLog("⚠️ No images found in database");
+              galleryContainer.innerHTML =
+                '<div style="text-align: center; padding: 3rem; color: #888;"><i class="fas fa-images" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i><br>No images uploaded yet.<br>Upload your first memory to get started!</div>';
+              return;
+            }
+
+            const allImages = [];
+            const userImages = [];
+
+            snapshot.forEach((childSnap) => {
+              const data = childSnap.val();
+              allImages.push({
+                key: childSnap.key,
+                userId: data?.userId,
+                type: data?.type,
+                hasUrl: !!data?.url,
+                hasImage: !!data?.image,
+                filename: data?.filename,
+                eventName: data?.eventName,
+              });
+
+              if (
+                data &&
+                data.userId === auth.currentUser.uid &&
+                (data.url || data.image)
+              ) {
+                userImages.push({
+                  key: childSnap.key,
+                  ...data,
+                });
+              }
+            });
+
+            debugLog(`📈 Total images in DB: ${allImages.length}`);
+            debugLog(`👤 User images found: ${userImages.length}`);
+            debugLog("🔍 All images summary:", allImages);
+
+            if (userImages.length === 0) {
+              debugLog("⚠️ No images found for current user");
+              galleryContainer.innerHTML =
+                '<div style="text-align: center; padding: 3rem; color: #888;"><i class="fas fa-camera" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i><br>No images found for your account.<br>Create your first event memory!</div>';
+              return;
+            }
+
+            // Sort by timestamp (newest first)
+            userImages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            // Group images by event
+            const eventGroups = {};
+            userImages.forEach((imageData) => {
+              const eventKey = imageData.eventName || "Untitled Event";
+              if (!eventGroups[eventKey]) {
+                eventGroups[eventKey] = [];
+              }
+              eventGroups[eventKey].push(imageData);
+            });
+
+            // Render grouped images
+            Object.keys(eventGroups).forEach((eventName, groupIndex) => {
+              const images = eventGroups[eventName];
+              const firstImage = images[0];
+
+              // Create event container
+              const eventContainer = document.createElement("div");
+              eventContainer.style.gridColumn = "1 / -1";
+              eventContainer.style.marginBottom = "2rem";
+
+              // Event header
+              const eventHeader = document.createElement("div");
+              eventHeader.innerHTML = `
+                <h2 style="text-align: center; font-size: 1.8rem; font-weight: 300; letter-spacing: 2px; margin-bottom: 1rem; color: #ffffff;">
+                  <i class="fas fa-calendar-star" style="margin-right: 0.5rem; color: #cccccc;"></i>
+                  ${eventName}
+                </h2>
+              `;
+              eventContainer.appendChild(eventHeader);
+
+              // Images grid for this event
+              const imagesGrid = document.createElement("div");
+              imagesGrid.className = "event-images-grid";
+              imagesGrid.style.display = "grid";
+              imagesGrid.style.gridTemplateColumns =
+                "repeat(auto-fit, minmax(350px, 1fr))";
+              imagesGrid.style.gap = "1.5rem";
+
+              images.forEach((imageData, index) => {
+                debugLog(
+                  `🖼️ Processing image ${index + 1} for event ${eventName}:`,
+                  {
+                    filename: imageData.filename,
+                    type: imageData.type,
+                    hasUrl: !!imageData.url,
+                    hasImage: !!imageData.image,
+                  }
+                );
+
+                const imageCard = document.createElement("div");
+                imageCard.className = "image-card";
+                imageCard.style.animationDelay = `${
+                  (groupIndex * images.length + index) * 0.1
+                }s`;
+
+                const imageContainer = document.createElement("div");
+                imageContainer.className = "image-container";
+
+                const img = document.createElement("img");
+
+                let imageSrc = null;
+                if (imageData.type === "storage" && imageData.url) {
+                  imageSrc = imageData.url;
+                } else if (imageData.image) {
+                  imageSrc = imageData.image;
+                } else if (imageData.url) {
+                  imageSrc = imageData.url;
+                }
+
+                if (!imageSrc) {
+                  debugLog(
+                    `⚠️ No valid image source for: ${imageData.filename}`
+                  );
+                  return;
+                }
+
+                img.src = imageSrc;
+                img.alt = imageData.filename || "Uploaded image";
+                img.style.cursor = "pointer";
+                img.onclick = function () {
+                  openFullscreen(
+                    imageSrc,
+                    imageData.filename || "Uploaded image"
+                  );
+                };
+                img.title = `${imageData.filename} (${formatFileSize(
+                  imageData.size || 0
+                )})`;
+
+                img.onload = function () {
+                  debugLog(
+                    `✅ Image loaded successfully: ${imageData.filename}`
+                  );
+                };
+
+                img.onerror = function () {
+                  debugLog(`❌ Failed to load image: ${imageData.filename}`);
+                  this.style.display = "none";
+                  const errorDiv = document.createElement("div");
+                  errorDiv.innerHTML =
+                    '<i class="fas fa-exclamation-triangle"></i> Failed to load image';
+                  errorDiv.style.color = "#ff4444";
+                  errorDiv.style.fontSize = "12px";
+                  errorDiv.style.textAlign = "center";
+                  errorDiv.style.padding = "2rem";
+                  imageContainer.appendChild(errorDiv);
+                };
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.className = "delete-btn";
+                deleteBtn.innerHTML = "X";
+                deleteBtn.title = "Delete image";
+                deleteBtn.onclick = function (e) {
+                  e.stopPropagation();
+                  if (
+                    confirm(
+                      "Are you sure you want to delete this precious memory?"
+                    )
+                  ) {
+                    deleteImage(imageData.key, imageData.url, imageData.type);
+                  }
+                };
+
+                imageContainer.appendChild(img);
+                imageContainer.appendChild(deleteBtn);
+
+                // Event info
+                const eventInfo = document.createElement("div");
+                eventInfo.className = "event-info";
+
+                const fileName = document.createElement("div");
+                fileName.className = "event-name";
+                fileName.textContent = imageData.filename || "Untitled";
+
+                const imageMeta = document.createElement("div");
+                imageMeta.className = "image-meta";
+
+                // Location tag
+                if (imageData.eventLocation) {
+                  const locationTag = document.createElement("div");
+                  locationTag.className = "meta-tag location";
+                  locationTag.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${imageData.eventLocation}`;
+                  imageMeta.appendChild(locationTag);
+                }
+
+                // Date tag
+                const dateTag = document.createElement("div");
+                dateTag.className = "meta-tag date";
+                const uploadDate = imageData.uploadDate
+                  ? new Date(imageData.uploadDate)
+                  : new Date(imageData.timestamp);
+                const formattedDate = uploadDate.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                });
+                dateTag.innerHTML = `<i class="fas fa-calendar"></i> ${formattedDate}`;
+                imageMeta.appendChild(dateTag);
+
+                // File size tag
+                const sizeTag = document.createElement("div");
+                sizeTag.className = "meta-tag";
+                sizeTag.innerHTML = `<i class="fas fa-file"></i> ${formatFileSize(
+                  imageData.size || 0
+                )}`;
+
+                eventInfo.appendChild(imageMeta);
+
+                imageCard.appendChild(imageContainer);
+                imageCard.appendChild(eventInfo);
+                imagesGrid.appendChild(imageCard);
+              });
+
+              eventContainer.appendChild(imagesGrid);
+              galleryContainer.appendChild(eventContainer);
+            });
+
+            debugLog(
+              `✅ Gallery loaded with ${userImages.length} images in ${
+                Object.keys(eventGroups).length
+              } events`
+            );
+          })
+          .catch((error) => {
+            debugLog("❌ Error loading images:", error);
+            galleryContainer.innerHTML =
+              '<div class="error">❌ Error loading images: ' +
+              error.message +
+              "</div>";
+          });
+      }
+
+      function deleteImage(imageKey, imageUrl, imageType) {
+        debugLog(`🗑️ Deleting image: ${imageKey} (${imageType})`);
+
+        if (
+          imageType === "storage" &&
+          imageUrl &&
+          imageUrl.includes("firebasestorage.googleapis.com")
+        ) {
+          const imageRef = storage.refFromURL(imageUrl);
+          imageRef
+            .delete()
+            .then(() => {
+              debugLog("✅ Image deleted from storage");
+              return db.ref("images/" + imageKey).remove();
+            })
+            .then(() => {
+              debugLog("✅ Image metadata deleted from database");
+              loadImages();
+            })
+            .catch((error) => {
+              debugLog("Delete error:", error);
+              db.ref("images/" + imageKey)
+                .remove()
+                .then(() => {
+                  debugLog(
+                    "✅ Image metadata deleted (storage deletion failed)"
+                  );
+                  loadImages();
+                })
+                .catch((dbError) => {
+                  alert("❌ Failed to delete image: " + dbError.message);
+                });
+            });
+        } else {
+          db.ref("images/" + imageKey)
+            .remove()
+            .then(() => {
+              debugLog("✅ Image deleted from database");
+              loadImages();
+            })
+            .catch((error) => {
+              debugLog("Delete error:", error);
+              alert("❌ Failed to delete image: " + error.message);
+            });
+        }
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      function showError(elementId, message) {
+        const element = document.getElementById(elementId);
+        element.textContent = message;
+        element.style.display = "block";
+      }
+
+      function hideError(elementId) {
+        const element = document.getElementById(elementId);
+        element.style.display = "none";
+      }
+
+      // Auth state observer
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          debugLog("🔐 User authenticated:", user.email);
+          loginSection.style.display = "none";
+          uploadSection.style.display = "block";
+          userEmail.textContent = user.email;
+          loadImages();
+        } else {
+          debugLog("🚪 User logged out");
+          loginSection.style.display = "block";
+          uploadSection.style.display = "none";
+          galleryContainer.innerHTML = "";
+          uploadStatus.innerHTML = "";
+          hideError("loginError");
+          progressContainer.style.display = "none";
+        }
+      });
+
+      // Allow Enter key for login
+      document.addEventListener("keypress", function (e) {
+        if (e.key === "Enter" && loginSection.style.display !== "none") {
+          login();
+        }
+      });
+
+      // Add some interactive effects
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add parallax effect to header
+        window.addEventListener("scroll", function () {
+          const scrolled = window.pageYOffset;
+          const parallax = document.querySelector(".header");
+          if (parallax) {
+            const speed = scrolled * 0.5;
+            parallax.style.transform = `translateY(${speed}px)`;
+          }
+        });
+      });
+
+      // Full screen image viewer functions
+      function openFullscreen(imageSrc, altText) {
+        const overlay = document.getElementById("fullscreenOverlay");
+        const image = document.getElementById("fullscreenImage");
+
+        if (!overlay || !image) {
+          console.error("Fullscreen elements not found");
+          return;
+        }
+
+        image.src = imageSrc;
+        image.alt = altText || "Full screen image";
+        overlay.style.display = "flex";
+
+        // Prevent body scroll
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeFullscreen() {
+        const overlay = document.getElementById("fullscreenOverlay");
+        overlay.style.display = "none";
+
+        // Restore body scroll
+        document.body.style.overflow = "auto";
+      }
+
+      // Event listeners for fullscreen viewer
+      // Event listeners for fullscreen viewer
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("fullscreenClose")
+          .addEventListener("click", closeFullscreen);
+        document
+          .getElementById("fullscreenOverlay")
+          .addEventListener("click", function (e) {
+            if (e.target === this) {
+              closeFullscreen();
+            }
+          });
+      });
+
+      // ESC key to close
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          closeFullscreen();
+        }
+      });
+    </script>
+
+    <div id="fullscreenOverlay" class="fullscreen-overlay">
+      <div class="fullscreen-content">
+        <img id="fullscreenImage" class="fullscreen-image" src="" alt="" />
+        <button id="fullscreenClose" class="fullscreen-close">x</button>
+      </div>
+    </div>
+  </body>
+</html>

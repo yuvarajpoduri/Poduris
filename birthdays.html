@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Birthday Calendar</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+      }
+
+      .birthday-cards {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .birthday-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+        border: 2px solid #333;
+        border-radius: 15px;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        animation: slideInUp 0.6s ease both;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .birthday-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 0, 0, 0.1),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .birthday-card:hover::before {
+        left: 100%;
+      }
+
+      .birthday-card:hover {
+        transform: translateY(-10px) scale(1.05);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        border-color: #000;
+      }
+
+      .birthday-avatar {
+        font-size: 3rem;
+        animation: bounce 2s infinite;
+      }
+
+      .birthday-info h3 {
+        margin-bottom: 0.5rem;
+        color: #333;
+      }
+
+      .birthday-info p {
+        color: #666;
+        font-style: italic;
+      }
+
+      /* Birthday Calendar */
+      .calendar-container {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .calendar-container h2 {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #333;
+        font-size: 2.5rem;
+        position: relative;
+      }
+
+      .calendar-container h2::after {
+        content: "";
+        position: absolute;
+        bottom: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 150px;
+        height: 4px;
+        background: linear-gradient(90deg, #333, #666);
+        border-radius: 2px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+
+      .calendar-month {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+      }
+
+      .calendar-month:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      }
+
+      .calendar-month h3 {
+        text-align: center;
+        margin-bottom: 1rem;
+        color: #333;
+        font-size: 1.3rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #333;
+      }
+
+      .days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.3rem;
+      }
+
+      .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+        position: relative;
+        background: rgba(0, 0, 0, 0.02);
+      }
+
+      .calendar-day:hover {
+        background: rgba(0, 0, 0, 0.1);
+        transform: scale(1.1);
+      }
+
+      .calendar-day.current-day {
+        background: red;
+        color: white;
+        font-weight: bold;
+        box-shadow: black;
+      }
+
+      .calendar-day.has-birthday {
+        background: black;
+        color: white;
+        font-weight: bold;
+        animation: pulse 2s infinite;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .calendar-day.has-birthday:hover {
+        background: black;
+        transform: scale(1.2);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      }
+
+      .calendar-day.has-birthday::after {
+        content: "🎂";
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 0.7rem;
+        animation: bounce 1s infinite;
+      }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .modal.show {
+        opacity: 1;
+      }
+
+      .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        position: relative;
+        transform: translateY(-50px);
+        transition: transform 0.3s ease;
+      }
+
+      .modal.show .modal-content {
+        transform: translateY(0);
+      }
+
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        position: absolute;
+        right: 15px;
+        top: 10px;
+      }
+
+      .close:hover,
+      .close:focus {
+        color: #000;
+      }
+
+      .modal-member {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 10px;
+      }
+
+      .modal-avatar {
+        flex-shrink: 0;
+      }
+
+      .modal-avatar img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border: 3px solid #333;
+      }
+
+      .modal-member h3 {
+        margin: 0;
+        color: #333;
+      }
+
+      .modal-member p {
+        margin: 5px 0 0 0;
+        color: #666;
+        font-style: italic;
+      }
+
+      /* Animations */
+      @keyframes slideInUp {
+        from {
+          transform: translateY(30px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-10px);
+        }
+        60% {
+          transform: translateY(-5px);
+        }
+      }
+
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        50% {
+          box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5);
+        }
+        100% {
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Birthdays Page -->
+    <div id="birthdays" class="tab-content">
+      <div class="calendar-container">
+        <h2>Birthday Calendar</h2>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </div>
+    </div>
+
+    <!-- Modal for birthday details -->
+    <div id="member-modal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+    <script src="mongodb-client.js"></script>
+    <script>
+      // Calculate age function
+      function calculateAge(birthDate) {
+        const birth = new Date(birthDate);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birth.getDate())
+        ) {
+          age--;
+        }
+
+        return age;
+      }
+
+      // Close modal function
+      function closeModal() {
+        const modal = document.getElementById("member-modal");
+        modal.classList.remove("show");
+        setTimeout(() => {
+          modal.style.display = "none";
+        }, 300);
+      }
+
+      // Close modal when clicking outside
+      window.onclick = function (event) {
+        const modal = document.getElementById("member-modal");
+        if (event.target === modal) {
+          closeModal();
+        }
+      };
+
+      // Render birthday calendar
+      function renderBirthdayCalendar() {
+        const container = document.getElementById("calendar-grid");
+        container.innerHTML = "";
+
+        // Create calendar for current year
+        const currentYear = new Date().getFullYear();
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentDay = today.getDate();
+
+        const months = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+        months.forEach((month, monthIndex) => {
+          const monthContainer = document.createElement("div");
+          monthContainer.className = "calendar-month";
+
+          const monthHeader = document.createElement("h3");
+          monthHeader.textContent = month;
+          monthContainer.appendChild(monthHeader);
+
+          const daysGrid = document.createElement("div");
+          daysGrid.className = "days-grid";
+
+          // Add day headers
+          const dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          dayHeaders.forEach((header) => {
+            const headerElement = document.createElement("div");
+            headerElement.textContent = header;
+            headerElement.style.fontWeight = "bold";
+            headerElement.style.fontSize = "0.8rem";
+            headerElement.style.color = "#666";
+            headerElement.style.textAlign = "center";
+            headerElement.style.padding = "5px";
+            daysGrid.appendChild(headerElement);
+          });
+
+          const daysInMonth = new Date(
+            currentYear,
+            monthIndex + 1,
+            0
+          ).getDate();
+          const firstDayOfMonth = new Date(currentYear, monthIndex, 1).getDay();
+
+          // Add empty cells for days before the first day of the month
+          for (let i = 0; i < firstDayOfMonth; i++) {
+            const emptyDay = document.createElement("div");
+            emptyDay.className = "calendar-day";
+            emptyDay.style.visibility = "hidden";
+            daysGrid.appendChild(emptyDay);
+          }
+
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = document.createElement("div");
+            dayElement.className = "calendar-day";
+            dayElement.textContent = day;
+
+            // Check if this is today's date
+            if (monthIndex === currentMonth && day === currentDay) {
+              dayElement.classList.add("current-day");
+            }
+
+            // Check for birthdays on this date
+            const birthdaysOnDate = familyData.family.filter((member) => {
+              const birthDate = new Date(member.birthDate);
+              return (
+                birthDate.getMonth() === monthIndex &&
+                birthDate.getDate() === day
+              );
+            });
+
+            if (birthdaysOnDate.length > 0) {
+              dayElement.classList.add("has-birthday");
+              dayElement.onclick = () =>
+                showBirthdayDetails(birthdaysOnDate, `${month} ${day}`);
+            }
+
+            daysGrid.appendChild(dayElement);
+          }
+
+          monthContainer.appendChild(daysGrid);
+          container.appendChild(monthContainer);
+        });
+      }
+
+      // Show birthday details
+      function showBirthdayDetails(members, date) {
+        const modal = document.getElementById("member-modal");
+        const modalBody = document.getElementById("modal-body");
+
+        let content = `<h2>Birthdays on ${date}</h2>`;
+        const today = new Date();
+
+        members.forEach((member) => {
+          let ageText = "";
+
+          if (member.deathDate) {
+            const deathAge = calculateAge(member.birthDate, member.deathDate);
+            ageText = `Lived to age ${deathAge}`;
+          } else {
+            const birthDate = new Date(member.birthDate);
+            const birthdayThisYear = new Date(
+              today.getFullYear(),
+              birthDate.getMonth(),
+              birthDate.getDate()
+            );
+
+            const currentAge = calculateAge(member.birthDate);
+
+            if (birthdayThisYear < today) {
+              // Birthday has already passed this year
+              ageText = `Age ${currentAge + 1} next year`;
+            } else if (birthdayThisYear.getTime() === today.getTime()) {
+              // Birthday is today
+              ageText = `Turns ${currentAge + 1} today! 🎉`;
+            } else {
+              // Birthday is upcoming
+              ageText = `Will turn ${currentAge + 1}`;
+            }
+          }
+
+          content += `
+            <div class="modal-member">
+              <div class="modal-avatar">
+                <img src="${member.avatar}" alt="${member.name}">
+              </div>
+              <div>
+                <h3>${member.name}</h3>
+                <p>${ageText}</p>
+              </div>
+            </div>
+          `;
+        });
+
+        modalBody.innerHTML = content;
+        modal.style.display = "block";
+        setTimeout(() => {
+          modal.classList.add("show");
+        }, 10);
+      }
+
+      // Initialize calendar when page loads
+      // Replace the existing DOMContentLoaded listener:
+      document.addEventListener("DOMContentLoaded", function () {
+        window.addEventListener("familyDataLoaded", function () {
+          renderBirthdayCalendar();
+        });
+
+        // If data is already loaded, render immediately
+        if (
+          window.familyDataAPI &&
+          window.familyDataAPI.getFamilyData().family.length > 0
+        ) {
+          renderBirthdayCalendar();
+        }
+      });
+    </script>
+  </body>
+</html>

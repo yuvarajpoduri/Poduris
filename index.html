@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poduri's</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <div id="mainContent" class="main-content">
+      <nav class="navbar">
+        <div class="nav-container">
+          <h1 class="nav-logo">Poduri's</h1>
+        </div>
+      </nav>
+
+      <!-- Button Grid -->
+      <div class="button-grid">
+        <div class="grid-btn-container">
+          <a href="families.html" class="btn-link">
+            <img src="/images/families.png" alt="Families" class="btn-icon" />
+          </a>
+        </div>
+
+        <div class="grid-btn-container">
+          <a href="chat.html" class="btn-link">
+            <img src="/images/chat.png" alt="Chat" class="btn-icon" />
+          </a>
+        </div>
+
+        <div class="grid-btn-container">
+          <a href="birthdays.html" class="btn-link">
+            <img src="/images/calender.png" alt="Birthday" class="btn-icon" />
+          </a>
+        </div>
+
+        <div class="grid-btn-container" id="announcements-btn">
+          <a href="announcements.html" class="btn-link">
+            <img
+              src="/images/announce.png"
+              alt="Announcements"
+              class="btn-icon"
+            />
+          </a>
+          <span
+            id="notification-dot"
+            class="notification-dot"
+            style="display: none"
+          ></span>
+        </div>
+
+        <div class="grid-btn-container">
+          <a href="gallary.html" class="btn-link">
+            <img src="/images/gallary.png" alt="gallary" class="btn-icon" />
+          </a>
+        </div>
+      </div>
+      
+      </div>
+      <center>
+        <h1
+          style="
+            font-weight: bolder;
+            color: black;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial,
+              sans-serif;
+          "
+        >
+          Family Tree
+        </h1>
+      </center>
+      <!-- Family Tree Controls -->
+      <div class="tree-controls">
+        <button id="zoom-in" class="control-btn">Zoom In</button>
+        <button id="zoom-out" class="control-btn">Zoom Out</button>
+        <button id="reset-zoom" class="control-btn">Reset</button>
+      </div>
+
+      <!-- Family Tree Container -->
+      <div id="tree-container" class="tree-container">
+        <svg id="tree-svg" class="tree-svg"></svg>
+        <div id="tree-members" class="tree-members"></div>
+      </div>
+
+      <!-- Member Detail Modal -->
+      <div id="member-modal" class="modal">
+        <div class="modal-content">
+          <span class="close" id="modal-close">&times;</span>
+          <div id="modal-body"></div>
+        </div>
+      </div>
+
+      <!-- Announcement Modal -->
+      <div id="announcement-modal" class="modal">
+        <div class="modal-content">
+          <span class="close" id="announcement-close">&times;</span>
+          <div id="announcement-modal-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="mongodb-client.js"></script>
+    <script src="events.js"></script>
+    <script>
+      // Initialize the application
+      // Replace the existing DOMContentLoaded listener with this:
+document.addEventListener("DOMContentLoaded", function () {
+  // Wait for family data to load before initializing
+  window.addEventListener('familyDataLoaded', function() {
+    initializeApp();
+  });
+  
+  // If data is already loaded, initialize immediately
+  if (window.familyDataAPI && window.familyDataAPI.getFamilyData().family.length > 0) {
+    initializeApp();
+  }
+});
+
+      function initializeApp() {
+        renderFamilyTree();
+        checkTodaysAnnouncements();
+        initializeTreeControls();
+        initializeModal();
+      }
+
+      // Global variables
+      let zoomLevel = 1;
+      let panX = 0,
+        panY = 0;
+      let isDragging = false;
+      let dragStart = { x: 0, y: 0 };
+      let treeWidth = 0;
+      let treeHeight = 0;
+      let touchStartTime = 0;
+      let touchMoved = false;
+
+      // Calculate age
+      function calculateAge(birthDate, deathDate = null) {
+        const birth = new Date(birthDate);
+        const today = deathDate ? new Date(deathDate) : new Date();
+        return (
+          today.getFullYear() -
+          birth.getFullYear() -
+          (today <
+          new Date(today.getFullYear(), birth.getMonth(), birth.getDate())
+            ? 1
+            : 0)
+        );
+      }
+
+      // Get display text for member
+      function getMemberDisplayText(member) {
+        if (member.deathDate) {
+          const birthYear = new Date(member.birthDate).getFullYear();
+          const deathYear = new Date(member.deathDate).getFullYear();
+          return `${birthYear} - ${deathYear}`;
+        }
+        return `Age ${calculateAge(member.birthDate)}`;
+      }
+
+      // Render family tree
+      function renderFamilyTree() {
+        const container = document.getElementById("tree-members");
+        const svg = document.getElementById("tree-svg");
+
+        container.innerHTML = "";
+        svg.innerHTML = "";
+
+        // Group members by generation
+        const generations = {};
+        familyData.family.forEach((member) => {
+          if (!generations[member.generation]) {
+            generations[member.generation] = [];
+          }
+          generations[member.generation].push(member);
+        });
+
+        // Calculate dynamic dimensions based on family size
+        const generationHeight = 350;
+        const memberWidth = 180;
+        const memberSpacing = 240;
+
+        // Find the generation with the most members to determine tree width
+        const maxMembersInGeneration = Math.max(
+          ...Object.values(generations).map((gen) => gen.length)
+        );
+        treeWidth = Math.max(
+          1200,
+          maxMembersInGeneration * memberSpacing + 400
+        );
+        treeHeight = Math.max(
+          800,
+          Object.keys(generations).length * generationHeight + 200
+        );
+
+        // Position members
+        const positions = {};
+        const sortedGenerations = Object.keys(generations).sort(
+          (a, b) => parseInt(a) - parseInt(b)
+        );
+
+        sortedGenerations.forEach((gen) => {
+          const genMembers = generations[gen];
+          const startX =
+            (treeWidth - (genMembers.length - 1) * memberSpacing) / 2 -
+            memberWidth / 2;
+
+          genMembers.forEach((member, index) => {
+            positions[member.id] = {
+              x: startX + index * memberSpacing,
+              y: (parseInt(gen) - 1) * generationHeight + 100,
+              member: member,
+            };
+          });
+        });
+
+        // Create member cards
+        Object.values(positions).forEach((pos) => {
+          const memberCard = createMemberCard(pos.member);
+          memberCard.style.left = `${pos.x}px`;
+          memberCard.style.top = `${pos.y}px`;
+          memberCard.style.position = "absolute";
+          container.appendChild(memberCard);
+        });
+
+        // Set container and SVG dimensions
+        container.style.width = `${treeWidth}px`;
+        container.style.height = `${treeHeight}px`;
+        container.style.position = "relative";
+
+        svg.style.width = `${treeWidth}px`;
+        svg.style.height = `${treeHeight}px`;
+        svg.style.position = "absolute";
+        svg.style.top = "0";
+        svg.style.left = "0";
+        svg.style.pointerEvents = "none";
+        svg.setAttribute("width", treeWidth);
+        svg.setAttribute("height", treeHeight);
+
+        // Draw connections
+        drawConnections(svg, positions);
+
+        // Enable panning
+        enablePanning();
+      }
+
+      // Draw connections between family members
+      function drawConnections(svg, positions) {
+        // Clear existing connections
+        svg.innerHTML = "";
+
+        const childrenByParent = {};
+        familyData.family.forEach((member) => {
+          if (member.parentId) {
+            if (!childrenByParent[member.parentId]) {
+              childrenByParent[member.parentId] = [];
+            }
+            childrenByParent[member.parentId].push(member);
+          }
+        });
+
+        // Draw parent-child connections
+        familyData.family.forEach((member) => {
+          if (
+            member.parentId &&
+            positions[member.parentId] &&
+            positions[member.id]
+          ) {
+            const parentPos = positions[member.parentId];
+            const childPos = positions[member.id];
+
+            const startX = parentPos.x + 90; // Center of parent card
+            const startY = parentPos.y + 120; // Bottom of parent card
+            const endX = childPos.x + 90; // Center of child card
+            const endY = childPos.y; // Top of child card
+
+            const siblings = childrenByParent[member.parentId];
+            const childIndex = siblings.findIndex(
+              (child) => child.id === member.id
+            );
+            const totalSiblings = siblings.length;
+
+            // Offset value spreads the curves horizontally
+            const curveOffset = (childIndex - (totalSiblings - 1) / 2) * 30;
+
+            // Bezier control points for a smoother, spread-out curve
+            const controlPoint1X = startX + curveOffset;
+            const controlPoint1Y = startY + 40;
+            const controlPoint2X = endX + curveOffset;
+            const controlPoint2Y = endY - 40;
+
+            const path = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "path"
+            );
+            const pathData = `M ${startX} ${startY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${endX} ${endY}`;
+
+            path.setAttribute("d", pathData);
+            path.setAttribute("stroke", "#4a90e2");
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke-linecap", "round");
+            path.classList.add("connection-line");
+
+            svg.appendChild(path);
+          }
+        });
+
+        // Draw spouse connections
+        const processedSpouses = new Set();
+
+        familyData.family.forEach((member) => {
+          if (
+            member.spouseId &&
+            positions[member.spouseId] &&
+            positions[member.id]
+          ) {
+            const spouseKey = [member.id, member.spouseId].sort().join("-");
+
+            if (!processedSpouses.has(spouseKey)) {
+              processedSpouses.add(spouseKey);
+
+              const pos1 = positions[member.id];
+              const pos2 = positions[member.spouseId];
+
+              const line = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "line"
+              );
+              line.setAttribute("x1", pos1.x + 90);
+              line.setAttribute("y1", pos1.y + 60);
+              line.setAttribute("x2", pos2.x + 90);
+              line.setAttribute("y2", pos2.y + 60);
+              line.setAttribute("stroke", "#e74c3c");
+              line.setAttribute("stroke-width", "3");
+              line.setAttribute("stroke-linecap", "round");
+              line.classList.add("spouse-line");
+
+              svg.appendChild(line);
+            }
+          }
+        });
+      }
+
+      // Create member card with image support
+      function createMemberCard(member) {
+        const card = document.createElement("div");
+        card.className = "member-card";
+
+        // Simplified click handler - remove complex touch logic
+        card.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          showMemberDetails(member);
+        });
+
+        // Keep your existing avatar, name, info code exactly as is
+        const avatar = document.createElement("div");
+        avatar.className = "member-avatar";
+
+        if (
+          member.avatar &&
+          (member.avatar.startsWith("http://") ||
+            member.avatar.startsWith("https://"))
+        ) {
+          const img = document.createElement("img");
+          img.src = member.avatar;
+          img.alt = member.name;
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "cover";
+          img.style.borderRadius = "50%";
+          avatar.appendChild(img);
+        } else {
+          avatar.textContent = member.avatar || "👤";
+        }
+
+        const name = document.createElement("div");
+        name.className = "member-name";
+        name.textContent = member.name;
+
+        const info = document.createElement("div");
+        info.className = "member-info";
+        info.textContent = getMemberDisplayText(member);
+
+        card.appendChild(avatar);
+        card.appendChild(name);
+        card.appendChild(info);
+
+        return card;
+      }
+
+      function initializeTreeControls() {
+        document.getElementById("zoom-in").onclick = () => {
+          zoomLevel *= 1.2;
+          applyTransform();
+        };
+
+        document.getElementById("zoom-out").onclick = () => {
+          zoomLevel /= 1.2;
+          applyTransform();
+        };
+
+        document.getElementById("reset-zoom").onclick = () => {
+          zoomLevel = 1;
+          panX = 0;
+          panY = 0;
+          applyTransform();
+        };
+      }
+
+      // Enable panning and mobile touch support
+      function enablePanning() {
+        const container = document.getElementById("tree-container");
+        let touches = [];
+        let lastDistance = 0;
+        let lastCenter = { x: 0, y: 0 };
+        let velocity = { x: 0, y: 0 };
+        let lastMoveTime = 0;
+        let lastPosition = { x: 0, y: 0 };
+
+        // Mouse events for desktop
+        container.addEventListener("mousedown", (e) => {
+          // Don't start panning if clicking on a member card
+          if (e.target.closest(".member-card")) {
+            return;
+          }
+
+          isDragging = true;
+          dragStart = { x: e.clientX - panX, y: e.clientY - panY };
+          lastPosition = { x: e.clientX, y: e.clientY };
+          lastMoveTime = Date.now();
+          velocity = { x: 0, y: 0 };
+          container.style.cursor = "grabbing";
+          container.classList.add("dragging");
+          e.preventDefault();
+        });
+
+        container.addEventListener("mousemove", (e) => {
+          if (isDragging) {
+            const currentTime = Date.now();
+            const deltaTime = currentTime - lastMoveTime;
+
+            if (deltaTime > 0) {
+              velocity.x = (e.clientX - lastPosition.x) / deltaTime;
+              velocity.y = (e.clientY - lastPosition.y) / deltaTime;
+            }
+
+            panX = e.clientX - dragStart.x;
+            panY = e.clientY - dragStart.y;
+
+            lastPosition = { x: e.clientX, y: e.clientY };
+            lastMoveTime = currentTime;
+
+            applyTransform();
+          }
+        });
+
+        container.addEventListener("mouseup", () => {
+          isDragging = false;
+          container.style.cursor = "grab";
+          container.classList.remove("dragging");
+
+          // Add momentum scrolling for smooth feel
+          if (Math.abs(velocity.x) > 0.1 || Math.abs(velocity.y) > 0.1) {
+            addMomentum();
+          }
+        });
+
+        container.addEventListener("mouseleave", () => {
+          isDragging = false;
+          container.style.cursor = "grab";
+          container.classList.remove("dragging");
+        });
+
+        container.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? 0.9 : 1.1;
+          const rect = container.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          // Zoom towards mouse position
+          const oldZoom = zoomLevel;
+          zoomLevel *= delta;
+
+          // Limit zoom levels
+          zoomLevel = Math.max(0.1, Math.min(5, zoomLevel));
+
+          // Adjust pan to zoom towards mouse
+          panX = mouseX - (mouseX - panX) * (zoomLevel / oldZoom);
+          panY = mouseY - (mouseY - panY) * (zoomLevel / oldZoom);
+
+          applyTransform();
+        });
+
+        // Touch events for mobile
+        container.addEventListener("touchstart", (e) => {
+          // Don't prevent default if touching a member card
+          if (e.target.closest(".member-card")) {
+            return; // Let the card handle its own touch events
+          }
+
+          e.preventDefault();
+          touches = Array.from(e.touches);
+          touchStartTime = Date.now();
+          touchMoved = false;
+
+          if (touches.length === 1) {
+            isDragging = true;
+            dragStart = {
+              x: touches[0].clientX - panX,
+              y: touches[0].clientY - panY,
+            };
+            lastPosition = { x: touches[0].clientX, y: touches[0].clientY };
+            lastMoveTime = Date.now();
+            velocity = { x: 0, y: 0 };
+            container.classList.add("dragging");
+          } else if (touches.length === 2) {
+            isDragging = false;
+            container.classList.remove("dragging");
+            const rect = container.getBoundingClientRect();
+
+            const dx = touches[1].clientX - touches[0].clientX;
+            const dy = touches[1].clientY - touches[0].clientY;
+            lastDistance = Math.sqrt(dx * dx + dy * dy);
+
+            lastCenter = {
+              x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+              y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+            };
+          }
+        });
+
+        container.addEventListener("touchmove", (e) => {
+          e.preventDefault();
+          touches = Array.from(e.touches);
+
+          if (touches.length === 1 && isDragging) {
+            // Single touch panning (works in all directions)
+            const currentTime = Date.now();
+            const deltaTime = currentTime - lastMoveTime;
+
+            if (deltaTime > 0) {
+              velocity.x = (touches[0].clientX - lastPosition.x) / deltaTime;
+              velocity.y = (touches[0].clientY - lastPosition.y) / deltaTime;
+            }
+
+            panX = touches[0].clientX - dragStart.x;
+            panY = touches[0].clientY - dragStart.y;
+
+            lastPosition = { x: touches[0].clientX, y: touches[0].clientY };
+            lastMoveTime = currentTime;
+
+            applyTransform();
+          } else if (touches.length === 2) {
+            // Two touch pinch zoom
+            const rect = container.getBoundingClientRect();
+
+            // Calculate new distance and center
+            const dx = touches[1].clientX - touches[0].clientX;
+            const dy = touches[1].clientY - touches[0].clientY;
+            const newDistance = Math.sqrt(dx * dx + dy * dy);
+
+            const newCenter = {
+              x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+              y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+            };
+
+            if (lastDistance > 0) {
+              // Calculate zoom factor
+              const zoomFactor = newDistance / lastDistance;
+              const oldZoom = zoomLevel;
+              zoomLevel *= zoomFactor;
+
+              // Limit zoom levels
+              zoomLevel = Math.max(0.1, Math.min(5, zoomLevel));
+
+              // Adjust pan to zoom towards center of pinch
+              panX = newCenter.x - (newCenter.x - panX) * (zoomLevel / oldZoom);
+              panY = newCenter.y - (newCenter.y - panY) * (zoomLevel / oldZoom);
+
+              // Handle center movement (combined pan + zoom)
+              const centerDx = newCenter.x - lastCenter.x;
+              const centerDy = newCenter.y - lastCenter.y;
+              panX += centerDx;
+              panY += centerDy;
+
+              applyTransform();
+            }
+
+            lastDistance = newDistance;
+            lastCenter = newCenter;
+          }
+        });
+
+        container.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          touches = Array.from(e.touches);
+
+          if (touches.length === 0) {
+            isDragging = false;
+            container.classList.remove("dragging");
+            lastDistance = 0;
+
+            // Add momentum scrolling for mobile
+            if (Math.abs(velocity.x) > 0.1 || Math.abs(velocity.y) > 0.1) {
+              addMomentum();
+            }
+          } else if (touches.length === 1) {
+            // Switched from two touches to one - restart single touch
+            isDragging = true;
+            dragStart = {
+              x: touches[0].clientX - panX,
+              y: touches[0].clientY - panY,
+            };
+            lastPosition = { x: touches[0].clientX, y: touches[0].clientY };
+            lastMoveTime = Date.now();
+            velocity = { x: 0, y: 0 };
+            container.classList.add("dragging");
+            lastDistance = 0;
+          }
+        });
+
+        // Prevent default touch behaviors that might interfere
+        container.addEventListener("touchcancel", (e) => {
+          e.preventDefault();
+          isDragging = false;
+          container.classList.remove("dragging");
+          lastDistance = 0;
+          touches = [];
+        });
+
+        // Add momentum scrolling function
+        function addMomentum() {
+          const friction = 0.95;
+          const minVelocity = 0.01;
+
+          function animate() {
+            velocity.x *= friction;
+            velocity.y *= friction;
+
+            if (
+              Math.abs(velocity.x) > minVelocity ||
+              Math.abs(velocity.y) > minVelocity
+            ) {
+              panX += velocity.x * 16; // 16ms frame time
+              panY += velocity.y * 16;
+              applyTransform();
+              requestAnimationFrame(animate);
+            }
+          }
+
+          requestAnimationFrame(animate);
+        }
+
+        // Keyboard navigation for accessibility
+        container.addEventListener("keydown", (e) => {
+          if (container.matches(":focus")) {
+            const step = 50;
+            switch (e.key) {
+              case "ArrowLeft":
+                panX += step;
+                applyTransform();
+                e.preventDefault();
+                break;
+              case "ArrowRight":
+                panX -= step;
+                applyTransform();
+                e.preventDefault();
+                break;
+              case "ArrowUp":
+                panY += step;
+                applyTransform();
+                e.preventDefault();
+                break;
+              case "ArrowDown":
+                panY -= step;
+                applyTransform();
+                e.preventDefault();
+                break;
+              case "+":
+              case "=":
+                zoomLevel *= 1.2;
+                applyTransform();
+                e.preventDefault();
+                break;
+              case "-":
+                zoomLevel /= 1.2;
+                applyTransform();
+                e.preventDefault();
+                break;
+            }
+          }
+        });
+
+        // Set initial cursor and properties
+        container.style.cursor = "grab";
+        container.style.touchAction = "none";
+        container.tabIndex = 0; // Make focusable for keyboard navigation
+      }
+
+      // Apply transform
+      function applyTransform() {
+        const treeMembers = document.getElementById("tree-members");
+        const treeSvg = document.getElementById("tree-svg");
+
+        const transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+        treeMembers.style.transform = transform;
+        treeSvg.style.transform = transform;
+
+        // Update transform origin for better scaling
+        treeMembers.style.transformOrigin = "0 0";
+        treeSvg.style.transformOrigin = "0 0";
+      }
+
+      // Replace your existing checkTodaysAnnouncements function with this improved version
+function checkTodaysAnnouncements() {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+
+    // Use single storage key for simplicity
+    const storageKey = `announcements_shown_${todayStr}`;
+
+    // Check if announcements have been shown today
+    let alreadyShown = false;
+    try {
+        alreadyShown = localStorage.getItem(storageKey) === "true";
+    } catch (error) {
+        // Fallback to memory storage if localStorage is not available
+        if (!window.announcementMemory) {
+            window.announcementMemory = {};
+        }
+        alreadyShown = window.announcementMemory[todayStr] === true;
+    }
+
+    // Check if there are announcements for today
+    const todaysAnnouncements = announcementsData.announcements.filter(
+        (announcement) => {
+            const announcementDate = announcement.date.split("T")[0];
+            return announcementDate === todayStr;
+        }
+    );
+
+    const notificationDot = document.getElementById("notification-dot");
+
+    if (todaysAnnouncements.length > 0) {
+        // Show notification dot
+        if (notificationDot) {
+            notificationDot.style.display = "block";
+        }
+
+        // Show announcements only if not already shown
+        if (!alreadyShown) {
+            showTodaysAnnouncements(todaysAnnouncements);
+            markAnnouncementsAsShown(todayStr);
+        }
+    } else {
+        // Hide notification dot if no announcements
+        if (notificationDot) {
+            notificationDot.style.display = "none";
+        }
+    }
+
+    // Clean up old announcement records (older than 7 days)
+    cleanupOldAnnouncementRecords();
+}
+
+// Function to mark announcements as shown
+function markAnnouncementsAsShown(dateStr) {
+    const storageKey = `announcements_shown_${dateStr}`;
+    
+    try {
+        localStorage.setItem(storageKey, "true");
+        // Also store timestamp for reference
+        localStorage.setItem(`${storageKey}_time`, new Date().getTime().toString());
+    } catch (error) {
+        console.log("LocalStorage not available, using memory fallback");
+        // Fallback to memory storage
+        if (!window.announcementMemory) {
+            window.announcementMemory = {};
+        }
+        window.announcementMemory[dateStr] = true;
+        window.announcementMemory[`${dateStr}_time`] = new Date().getTime();
+    }
+}
+
+// Clean up old storage records to prevent accumulation
+function cleanupOldAnnouncementRecords() {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    try {
+        // Clean localStorage
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('announcements_shown_')) {
+                const dateStr = key.replace('announcements_shown_', '').replace('_time', '');
+                // Only process valid date strings
+                if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const recordDate = new Date(dateStr);
+                    if (recordDate < sevenDaysAgo) {
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+        }
+        
+        // Remove old keys
+        keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+        });
+        
+    } catch (error) {
+        console.log("Cleanup not possible:", error);
+    }
+}
+
+// Main function to show today's announcements
+function showTodaysAnnouncements(announcements) {
+    const modal = document.getElementById("announcement-modal");
+    const modalBody = document.getElementById("announcement-modal-body");
+
+    if (!modal || !modalBody) {
+        console.error("Announcement modal elements not found");
+        return;
+    }
+
+    modalBody.innerHTML = "";
+
+    announcements.forEach((announcement) => {
+        const announcementDiv = document.createElement("div");
+        announcementDiv.className = "announcement-item";
+        announcementDiv.innerHTML = `
+            <h3>${announcement.heading}</h3>
+            <p>${announcement.content}</p>
+            ${
+                announcement.image
+                    ? `<img src="${announcement.image}" alt="${announcement.heading}" style="max-width: 100%; height: auto; margin-top: 10px;">`
+                    : ""
+            }
+            <small>Posted: ${new Date(announcement.date).toLocaleDateString()}</small>
+        `;
+        modalBody.appendChild(announcementDiv);
+    });
+
+    modal.style.display = "block";
+    modal.classList.add("show");
+}
+
+// Function to manually show announcements (for notification dot click)
+function showAnnouncementsManually() {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    const todaysAnnouncements = announcementsData.announcements.filter(
+        (announcement) => {
+            const announcementDate = announcement.date.split("T")[0];
+            return announcementDate === todayStr;
+        }
+    );
+
+    if (todaysAnnouncements.length > 0) {
+        showTodaysAnnouncements(todaysAnnouncements);
+        markAnnouncementsAsShown(todayStr);
+    }
+}
+
+// Initialize modal
+function initializeModal() {
+    const memberModal = document.getElementById("member-modal");
+    const memberModalClose = document.getElementById("modal-close");
+    const announcementModal = document.getElementById("announcement-modal");
+    const announcementModalClose = document.getElementById("announcement-close");
+
+    // Member modal close
+    if (memberModalClose) {
+        memberModalClose.onclick = function () {
+            memberModal.classList.remove("show");
+            setTimeout(() => {
+                memberModal.style.display = "none";
+            }, 300);
+        };
+    }
+
+    // Announcement modal close
+    if (announcementModalClose) {
+        announcementModalClose.onclick = function () {
+            announcementModal.classList.remove("show");
+            setTimeout(() => {
+                announcementModal.style.display = "none";
+            }, 300);
+            
+            // Mark announcements as shown when user closes modal
+            const today = new Date().toISOString().split("T")[0];
+            markAnnouncementsAsShown(today);
+        };
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function (event) {
+        if (event.target === memberModal) {
+            memberModal.classList.remove("show");
+            setTimeout(() => {
+                memberModal.style.display = "none";
+            }, 300);
+        }
+        if (event.target === announcementModal) {
+            announcementModal.classList.remove("show");
+            setTimeout(() => {
+                announcementModal.style.display = "none";
+            }, 300);
+            
+            // Mark announcements as shown when clicking outside
+            const today = new Date().toISOString().split("T")[0];
+            markAnnouncementsAsShown(today);
+        }
+    };
+
+    // Add escape key support
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            memberModal.classList.remove("show");
+            announcementModal.classList.remove("show");
+            setTimeout(() => {
+                memberModal.style.display = "none";
+                announcementModal.style.display = "none";
+            }, 300);
+            
+            // Mark announcements as shown when pressing escape
+            if (announcementModal.classList.contains("show")) {
+                const today = new Date().toISOString().split("T")[0];
+                markAnnouncementsAsShown(today);
+            }
+        }
+    });
+}
+
+// Helper function to reset announcement status (for testing)
+function resetAnnouncementsForToday() {
+    const today = new Date().toISOString().split("T")[0];
+    const storageKey = `announcements_shown_${today}`;
+    
+    try {
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(`${storageKey}_time`);
+    } catch (error) {
+        if (window.announcementMemory) {
+            delete window.announcementMemory[today];
+            delete window.announcementMemory[`${today}_time`];
+        }
+    }
+    
+    console.log("Announcement status reset for today");
+}
+
+      // Show member details
+      function showMemberDetails(member) {
+        const modal = document.getElementById("member-modal");
+        const modalBody = document.getElementById("modal-body");
+
+        // Find spouse if exists
+        const spouse = member.spouseId
+          ? familyData.family.find((m) => m.id === member.spouseId)
+          : null;
+
+        // Find children
+        const children = familyData.family.filter(
+          (m) => m.parentId === member.id
+        );
+
+        // Find parent
+        const parent = member.parentId
+          ? familyData.family.find((m) => m.id === member.parentId)
+          : null;
+
+        modalBody.innerHTML = `
+          <div class="member-details">
+            <div class="member-avatar-large">
+              ${
+                member.avatar &&
+                (member.avatar.startsWith("http://") ||
+                  member.avatar.startsWith("https://"))
+                  ? `<img src="${member.avatar}" alt="${member.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                  : `<div style="font-size: 60px;">${
+                      member.avatar || "👤"
+                    }</div>`
+              }
+            </div>
+            <h2>${member.name}</h2>
+            <p><strong>Age:</strong> ${
+              member.deathDate
+                ? `${calculateAge(
+                    member.birthDate,
+                    member.deathDate
+                  )} (deceased)`
+                : calculateAge(member.birthDate)
+            }</p>
+            <p><strong>Birth Date:</strong> ${new Date(
+              member.birthDate
+            ).toLocaleDateString()}</p>
+            ${
+              member.deathDate
+                ? `<p><strong>Death Date:</strong> ${new Date(
+                    member.deathDate
+                  ).toLocaleDateString()}</p>`
+                : ""
+            }
+            <p><strong>Generation:</strong> ${member.generation}</p>
+            ${spouse ? `<p><strong>Spouse:</strong> ${spouse.name}</p>` : ""}
+            ${parent ? `<p><strong>Parent:</strong> ${parent.name}</p>` : ""}
+            ${
+              children.length > 0
+                ? `<p><strong>Children:</strong> ${children
+                    .map((child) => child.name)
+                    .join(", ")}</p>`
+                : ""
+            }
+            ${
+              member.occupation
+                ? `<p><strong>Occupation:</strong> ${member.occupation}</p>`
+                : ""
+            }
+            ${
+              member.location
+                ? `<p><strong>Location:</strong> ${member.location}</p>`
+                : ""
+            }
+            ${member.bio ? `<p><strong>Bio:</strong> ${member.bio}</p>` : ""}
+          </div>
+        `;
+
+        modal.style.display = "block";
+        modal.classList.add("show");
+      }
+    </script>
+  </body>
+</html> 
