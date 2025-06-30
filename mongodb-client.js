@@ -5,7 +5,7 @@ let familyData = {
 // Fetch all family members
 async function fetchFamilyData() {
   try {
-    const response = await fetch("http://localhost:3000/api/family");
+    const response = await fetch("https://poduris.onrender.com/api/family");
     const result = await response.json();
 
     familyData.family = result.map((doc) => ({
@@ -35,7 +35,7 @@ async function addFamilyMember(memberData) {
   try {
     console.log("Adding member with data:", memberData);
 
-    const response = await fetch("http://localhost:3000/api/family", {
+    const response = await fetch("https://poduris.onrender.com/api/family", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,13 +66,16 @@ async function updateFamilyMember(id, memberData) {
   try {
     console.log("Updating member", id, "with data:", memberData);
 
-    const response = await fetch(`http://localhost:3000/api/family/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(memberData),
-    });
+    const response = await fetch(
+      `https://poduris.onrender.com/api/family/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(memberData),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -100,9 +103,12 @@ async function deleteFamilyMember(id) {
   try {
     console.log("Deleting member with id:", id);
 
-    const response = await fetch(`http://localhost:3000/api/family/${id}`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `https://poduris.onrender.com/api/family/${id}`,
+      {
+        method: "DELETE",
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
