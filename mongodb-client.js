@@ -2,7 +2,6 @@ let familyData = {
   family: [],
 };
 
-// Fetch all family members
 async function fetchFamilyData() {
   try {
     const response = await fetch("https://poduris.onrender.com/api/family");
@@ -30,7 +29,6 @@ async function fetchFamilyData() {
   }
 }
 
-// Add new family member
 async function addFamilyMember(memberData) {
   try {
     console.log("Adding member with data:", memberData);
@@ -50,8 +48,6 @@ async function addFamilyMember(memberData) {
 
     const newMember = await response.json();
     console.log("New member added:", newMember);
-
-    // Add to local data
     familyData.family.push(newMember);
 
     return { success: true, data: newMember };
@@ -61,7 +57,6 @@ async function addFamilyMember(memberData) {
   }
 }
 
-// Update family member
 async function updateFamilyMember(id, memberData) {
   try {
     console.log("Updating member", id, "with data:", memberData);
@@ -85,7 +80,6 @@ async function updateFamilyMember(id, memberData) {
     const updatedMember = await response.json();
     console.log("Member updated:", updatedMember);
 
-    // Update local data
     const index = familyData.family.findIndex((member) => member.id === id);
     if (index !== -1) {
       familyData.family[index] = updatedMember;
@@ -98,7 +92,6 @@ async function updateFamilyMember(id, memberData) {
   }
 }
 
-// Delete family member
 async function deleteFamilyMember(id) {
   try {
     console.log("Deleting member with id:", id);
@@ -118,7 +111,6 @@ async function deleteFamilyMember(id) {
     const result = await response.json();
     console.log("Member deleted:", result);
 
-    // Remove from local data
     familyData.family = familyData.family.filter((member) => member.id !== id);
 
     return { success: true, message: "Family member deleted successfully" };
@@ -128,12 +120,9 @@ async function deleteFamilyMember(id) {
   }
 }
 
-// Get family member by ID
 function getFamilyMemberById(id) {
   return familyData.family.find((member) => member.id === id);
 }
-
-// Fallback data for offline/error scenarios
 function getFallbackData() {
   familyData = {
     family: [
@@ -156,7 +145,6 @@ function getFallbackData() {
   return familyData;
 }
 
-// Initialize family data on page load
 async function initializeFamilyData() {
   try {
     await fetchFamilyData();
@@ -172,13 +160,11 @@ async function initializeFamilyData() {
   }
 }
 
-// Wait for DOM to be ready
 document.addEventListener("DOMContentLoaded", function () {
   console.log("DOM loaded, initializing family data...");
   initializeFamilyData();
 });
 
-// Export API functions
 window.familyDataAPI = {
   getFamilyData: () => familyData,
   getFamilyMemberById,
