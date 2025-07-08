@@ -310,13 +310,10 @@
   </head>
   <body>
     <h1 class="page-title">Family Announcements</h1>
-
-    <!-- Announcements Container -->
     <div id="announcements-container" class="announcements-container">
       <div class="loading">Loading announcements...</div>
     </div>
 
-    <!-- Modal for detailed view -->
     <div id="announcement-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -339,7 +336,6 @@
 
     <script src="events.js"></script>
     <script>
-      // Initialize the page
       document.addEventListener("DOMContentLoaded", function () {
         loadAnnouncements();
         initializeModal();
@@ -347,8 +343,6 @@
 
       function loadAnnouncements() {
         const container = document.getElementById("announcements-container");
-
-        // Sort announcements by date (newest first)
         const sortedAnnouncements = [...announcementsData.announcements].sort(
           (a, b) => {
             return new Date(b.date) - new Date(a.date);
@@ -447,7 +441,6 @@
           }
         };
 
-        // ESC key to close modal
         document.addEventListener("keydown", function (event) {
           if (event.key === "Escape" && modal.style.display === "block") {
             modal.style.display = "none";
