@@ -312,7 +312,6 @@
     </style>
   </head>
   <body>
-    <!-- Birthdays Page -->
     <div id="birthdays" class="tab-content">
       <div class="calendar-container">
         <h2>Birthday Calendar</h2>
@@ -320,7 +319,6 @@
       </div>
     </div>
 
-    <!-- Modal for birthday details -->
     <div id="member-modal" class="modal">
       <div class="modal-content">
         <span class="close" onclick="closeModal()">&times;</span>
@@ -329,7 +327,6 @@
     </div>
     <script src="mongodb-client.js"></script>
     <script>
-      // Calculate age function
       function calculateAge(birthDate) {
         const birth = new Date(birthDate);
         const today = new Date();
@@ -346,7 +343,6 @@
         return age;
       }
 
-      // Close modal function
       function closeModal() {
         const modal = document.getElementById("member-modal");
         modal.classList.remove("show");
@@ -355,7 +351,6 @@
         }, 300);
       }
 
-      // Close modal when clicking outside
       window.onclick = function (event) {
         const modal = document.getElementById("member-modal");
         if (event.target === modal) {
@@ -363,12 +358,9 @@
         }
       };
 
-      // Render birthday calendar
       function renderBirthdayCalendar() {
         const container = document.getElementById("calendar-grid");
         container.innerHTML = "";
-
-        // Create calendar for current year
         const currentYear = new Date().getFullYear();
         const today = new Date();
         const currentMonth = today.getMonth();
@@ -400,7 +392,6 @@
           const daysGrid = document.createElement("div");
           daysGrid.className = "days-grid";
 
-          // Add day headers
           const dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
           dayHeaders.forEach((header) => {
             const headerElement = document.createElement("div");
@@ -419,8 +410,6 @@
             0
           ).getDate();
           const firstDayOfMonth = new Date(currentYear, monthIndex, 1).getDay();
-
-          // Add empty cells for days before the first day of the month
           for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyDay = document.createElement("div");
             emptyDay.className = "calendar-day";
@@ -433,12 +422,9 @@
             dayElement.className = "calendar-day";
             dayElement.textContent = day;
 
-            // Check if this is today's date
             if (monthIndex === currentMonth && day === currentDay) {
               dayElement.classList.add("current-day");
             }
-
-            // Check for birthdays on this date
             const birthdaysOnDate = familyData.family.filter((member) => {
               const birthDate = new Date(member.birthDate);
               return (
@@ -461,7 +447,6 @@
         });
       }
 
-      // Show birthday details
       function showBirthdayDetails(members, date) {
         const modal = document.getElementById("member-modal");
         const modalBody = document.getElementById("modal-body");
@@ -486,13 +471,10 @@
             const currentAge = calculateAge(member.birthDate);
 
             if (birthdayThisYear < today) {
-              // Birthday has already passed this year
               ageText = `Age ${currentAge + 1} next year`;
             } else if (birthdayThisYear.getTime() === today.getTime()) {
-              // Birthday is today
               ageText = `Turns ${currentAge + 1} today! 🎉`;
             } else {
-              // Birthday is upcoming
               ageText = `Will turn ${currentAge + 1}`;
             }
           }
@@ -517,14 +499,11 @@
         }, 10);
       }
 
-      // Initialize calendar when page loads
-      // Replace the existing DOMContentLoaded listener:
       document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener("familyDataLoaded", function () {
           renderBirthdayCalendar();
         });
 
-        // If data is already loaded, render immediately
         if (
           window.familyDataAPI &&
           window.familyDataAPI.getFamilyData().family.length > 0
