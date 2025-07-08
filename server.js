@@ -31,7 +31,6 @@ const familySchema = new mongoose.Schema({
 
 const FamilyMember = mongoose.model("FamilyMember", familySchema);
 
-// Get all family members
 app.get("/api/family", async (req, res) => {
   try {
     const members = await FamilyMember.find();
@@ -43,27 +42,22 @@ app.get("/api/family", async (req, res) => {
   }
 });
 
-// Add new family member
 app.post("/api/family", async (req, res) => {
   try {
     console.log("📝 Adding new family member:", req.body);
 
-    // Validate required fields
     if (!req.body.name || !req.body.gender || !req.body.generation) {
       return res.status(400).json({
         error:
           "Missing required fields: name, gender, and generation are required",
       });
     }
-
-    // Get next available ID
     const existing = await FamilyMember.find().sort({ id: -1 }).limit(1);
     const nextId = existing.length > 0 ? existing[0].id + 1 : 1;
 
     const newMember = new FamilyMember({
       ...req.body,
       id: req.body.id || nextId,
-      // Ensure empty strings for optional fields
       birthDate: req.body.birthDate || null,
       deathDate: req.body.deathDate || null,
       parentId: req.body.parentId || null,
@@ -92,13 +86,11 @@ app.post("/api/family", async (req, res) => {
   }
 });
 
-// Update family member
 app.put("/api/family/:id", async (req, res) => {
   try {
     const memberId = Number(req.params.id);
     console.log("✏️ Updating family member:", memberId, req.body);
 
-    // Validate required fields
     if (!req.body.name || !req.body.gender || !req.body.generation) {
       return res.status(400).json({
         error:
@@ -110,7 +102,6 @@ app.put("/api/family/:id", async (req, res) => {
       { id: memberId },
       {
         ...req.body,
-        // Handle null values properly
         birthDate: req.body.birthDate || null,
         deathDate: req.body.deathDate || null,
         parentId: req.body.parentId || null,
@@ -140,7 +131,6 @@ app.put("/api/family/:id", async (req, res) => {
   }
 });
 
-// Delete family member
 app.delete("/api/family/:id", async (req, res) => {
   try {
     const memberId = Number(req.params.id);
@@ -162,7 +152,6 @@ app.delete("/api/family/:id", async (req, res) => {
   }
 });
 
-// Get single family member
 app.get("/api/family/:id", async (req, res) => {
   try {
     const memberId = Number(req.params.id);
@@ -179,7 +168,6 @@ app.get("/api/family/:id", async (req, res) => {
   }
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error("❌ Unhandled error:", err);
   res.status(500).json({ error: "Internal server error" });
