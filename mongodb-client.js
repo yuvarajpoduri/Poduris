@@ -4,7 +4,7 @@ let familyData = {
 
 async function fetchFamilyData() {
   try {
-    const response = await fetch("https://poduris-f3tn.com/api/family");
+    const response = await fetch("/api/family");
     const result = await response.json();
 
     familyData.family = result.map((doc) => ({
