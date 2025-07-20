@@ -33,7 +33,7 @@ async function addFamilyMember(memberData) {
   try {
     console.log("Adding member with data:", memberData);
 
-    const response = await fetch("https://poduris.onrender.com/api/family", {
+    const response = await fetch("api/family", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -62,7 +62,7 @@ async function updateFamilyMember(id, memberData) {
     console.log("Updating member", id, "with data:", memberData);
 
     const response = await fetch(
-      `https://poduris.onrender.com/api/family/${id}`,
+      `/api/family/${id}`,
       {
         method: "PUT",
         headers: {
@@ -97,7 +97,7 @@ async function deleteFamilyMember(id) {
     console.log("Deleting member with id:", id);
 
     const response = await fetch(
-      `https://poduris.onrender.com/api/family/${id}`,
+      `/api/family/${id}`,
       {
         method: "DELETE",
       }
