@@ -4,6 +4,7 @@ import FamilyMember from "../models/FamilyMember.js";
 export const register = async (req, res, next) => {
   try {
     const { email, password, linkedFamilyMemberId } = req.body;
+
     if (!email || !password || !linkedFamilyMemberId) {
       return res.status(400).json({
         success: false,
@@ -11,40 +12,37 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
     }
 
-    // Validate that FamilyMember exists
     const familyMember = await FamilyMember.findOne({
       id: linkedFamilyMemberId,
     });
+
     if (!familyMember) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Selected family member not found" });
+      return res.status(400).json({
+        success: false,
+        message: "Selected family member not found",
+      });
     }
 
-    // Check if FamilyMember is already linked to another user
     const existingLink = await User.findOne({ linkedFamilyMemberId });
     if (existingLink) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "This family member is already linked to another user",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "This family member is already linked to another user",
+      });
     }
 
-    // Create user with linkedFamilyMemberId
     const user = await User.create({
       email,
       password,
-      name: familyMember.name, // Use FamilyMember name initially
+      name: familyMember.name,
       linkedFamilyMemberId,
       role: "family_member",
       status: "pending",
@@ -70,30 +68,43 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Please provide email and password" });
+      return res.status(400).json({
+        success: false,
+        message: "Please provide email and password",
+      });
     }
+
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
+
     if (user.role !== "admin" && user.status === "pending") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Your account is pending approval." });
+      return res.status(403).json({
+        success: false,
+        message: "Your account is pending approval.",
+      });
     }
-    req.session.userId = user._id.toString();
-    req.session.userRole = user.role;
+
+    req.session.user = {
+      id: user._id.toString(),
+      role: user.role,
+      linkedFamilyMemberId: user.linkedFamilyMemberId,
+    };
+
     res.status(200).json({
       success: true,
       user: {
@@ -102,6 +113,7 @@ export const login = async (req, res, next) => {
         name: user.name,
         role: user.role,
         status: user.status || "approved",
+        linkedFamilyMemberId: user.linkedFamilyMemberId,
       },
     });
   } catch (error) {
@@ -111,20 +123,21 @@ export const login = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const userId = req.session.userId;
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Not authorized" });
-    }
-    const user = await User.findById(userId);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!req.session || !req.session.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized",
+      });
     }
 
-    // Get linked FamilyMember if exists
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
     let linkedFamilyMember = null;
     if (user.linkedFamilyMemberId) {
       linkedFamilyMember = await FamilyMember.findOne({
@@ -163,15 +176,12 @@ export const getMe = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    req.session.destroy((err) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ success: false, message: "Error logging out" });
-      res.clearCookie("family_tree_sid");
-      res
-        .status(200)
-        .json({ success: true, message: "Logged out successfully" });
+    req.session.destroy(() => {
+      res.clearCookie("poduris.sid");
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+      });
     });
   } catch (error) {
     next(error);
