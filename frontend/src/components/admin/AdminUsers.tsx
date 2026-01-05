@@ -6,6 +6,8 @@ import type { User, FamilyMember } from "../../types";
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  // Fixed: Added setFamilyMembers to the state destructuring
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +36,11 @@ export const AdminUsers: React.FC = () => {
   const fetchFamilyMembers = async () => {
     try {
       const data = await familyMembersAPI.getAll();
+      // Fixed: Now matches the state setter name
       setFamilyMembers(data);
     } catch (err: any) {
-      // Ignore errors for family members
+      console.error("Failed to fetch family members:", err);
+      // Ignore errors for family members as per original logic
     }
   };
 
@@ -53,7 +57,6 @@ export const AdminUsers: React.FC = () => {
     e.preventDefault();
     if (!selectedUser) return;
 
-    // Safety: ensure we use the correct ID field
     const userId = selectedUser.id || (selectedUser as any)._id;
 
     if (!userId) {
@@ -365,7 +368,6 @@ export const AdminUsers: React.FC = () => {
               <option value="admin">Admin</option>
             </select>
           </div>
-
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
