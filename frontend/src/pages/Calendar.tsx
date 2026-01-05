@@ -164,10 +164,11 @@ export const Calendar: React.FC = () => {
                 key={day.toISOString()}
                 date={day}
                 isToday={isToday(day)}
+                // FIX: Ensure this is strictly a boolean
                 isSelected={
-                  selectedDate &&
+                  !!(selectedDate &&
                   format(day, "yyyy-MM-dd") ===
-                    format(selectedDate, "yyyy-MM-dd")
+                    format(selectedDate, "yyyy-MM-dd"))
                 }
                 events={getEventsForDate(day)}
                 onClick={() => setSelectedDate(day)}
@@ -254,6 +255,7 @@ export const Calendar: React.FC = () => {
                 <div className="flex flex-col items-center text-center">
                   <img
                     src={previewMember.avatar}
+                    alt={previewMember.memberName || "Member"}
                     className="w-24 h-24 rounded-full object-cover mb-4"
                   />
 

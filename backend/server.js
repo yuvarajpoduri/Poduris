@@ -48,6 +48,19 @@ app.use(
 );
 
 // Middleware
+<<<<<<< HEAD
+=======
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://poduris.onrender.com"
+    ],
+    credentials: true
+  })
+);
+
+>>>>>>> cfafd3c76027ac7f3a5705296173f72a1e34a1d8
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
