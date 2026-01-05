@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "../Card";
 import { Modal } from "../Modal";
-import { usersAPI, familyMembersAPI } from "../../utils/api";
-import type { User, FamilyMember } from "../../types";
+import { usersAPI } from "../../utils/api";
+import type { User } from "../../types";
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  // Fixed: Added setFamilyMembers to the state destructuring
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +17,6 @@ export const AdminUsers: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-    fetchFamilyMembers();
   }, []);
 
   const fetchUsers = async () => {
@@ -30,17 +27,6 @@ export const AdminUsers: React.FC = () => {
       setError(err.response?.data?.message || "Failed to load users");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchFamilyMembers = async () => {
-    try {
-      const data = await familyMembersAPI.getAll();
-      // Fixed: Now matches the state setter name
-      setFamilyMembers(data);
-    } catch (err: any) {
-      console.error("Failed to fetch family members:", err);
-      // Ignore errors for family members as per original logic
     }
   };
 
