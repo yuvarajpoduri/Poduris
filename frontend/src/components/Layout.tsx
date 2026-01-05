@@ -1,7 +1,9 @@
 import React, { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 import { 
   LayoutDashboard, 
   Users, 
@@ -20,15 +22,16 @@ interface LayoutProps {
 }
 
 const navigationItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/family', label: 'Family', icon: Users },
-  { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
-  { path: '/gallery', label: 'Gallery', icon: Images },
-  { path: '/announcements', label: 'Announcements', icon: Megaphone },
+  { path: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { path: '/family', labelKey: 'nav.family', icon: Users },
+  { path: '/calendar', labelKey: 'nav.calendar', icon: CalendarIcon },
+  { path: '/gallery', labelKey: 'nav.gallery', icon: Images },
+  { path: '/announcements', labelKey: 'nav.announcements', icon: Megaphone },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, isAdmin } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,7 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </Link>
                 );
               })}
@@ -85,20 +88,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }`}
                 >
                   <Settings className="w-4 h-4" />
-                  <span>Admin</span>
+                  <span>{t('nav.admin')}</span>
                 </Link>
               )}
             </div>
 
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 dark:text-gray-400 hidden xl:block">{user?.name}</span>
+              <LanguageToggle />
               <ThemeToggle />
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 flex items-center space-x-2"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden xl:inline">Logout</span>
+                <span className="hidden xl:inline">{t('nav.logout')}</span>
               </button>
             </div>
           </div>
@@ -112,6 +116,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             Poduris
           </Link>
           <div className="flex items-center space-x-3">
+            <LanguageToggle />
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -151,7 +156,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                       }`}
                     >
                       <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </Link>
                   );
                 })}
@@ -166,7 +171,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     }`}
                   >
                     <Settings className="w-5 h-5" />
-                    <span>Admin</span>
+                    <span>{t('nav.admin')}</span>
                   </Link>
                 )}
                 <button
@@ -177,7 +182,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 tap-target"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+                  <span>{t('nav.logout')}</span>
                 </button>
               </div>
             </motion.div>
@@ -213,11 +218,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Icon className="w-5 h-5 mb-1" />
                 </motion.div>
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-xs font-medium">{t(item.labelKey)}</span>
                 {isActive(item.path) && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-1 bg-accent-blue rounded-t-full"
+                    className="absolute bottom-0 left-0 right-0 h-1 bg-accent-blue rounded-t-full"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />

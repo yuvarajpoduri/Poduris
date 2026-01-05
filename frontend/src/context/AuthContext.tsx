@@ -7,7 +7,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: () => boolean;
 }
 
@@ -19,40 +19,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      const savedUser = localStorage.getItem('user');
-      
-      if (token && savedUser) {
-        try {
-          const userData = await authAPI.getMe();
-          setUser(userData);
-        } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+      try {
+        // Try to get user from session
+        const userData = await authAPI.getMe();
+        setUser(userData);
+        // Save user to localStorage for quick access (not for auth)
+        localStorage.setItem('user', JSON.stringify(userData));
+      } catch (error) {
+        // No valid session
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { token, user: userData } = await authAPI.login(email, password);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    const { user: userData } = await authAPI.login(email, password);
     setUser(userData);
+    // Save user to localStorage for quick access (not for auth)
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const register = async (email: string, password: string, name: string) => {
-    const { token, user: userData } = await authAPI.register(email, password, name);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+    const { user: userData } = await authAPI.register(email, password, name);
+    // Don't set user if status is pending
+    if (userData.status === 'approved') {
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      // Continue with logout even if API call fails
+    }
     localStorage.removeItem('user');
     setUser(null);
   };

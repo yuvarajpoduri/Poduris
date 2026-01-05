@@ -1,47 +1,31 @@
-import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 export const protect = async (req, res, next) => {
   try {
-    let token;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
+    // Check if user is in session
+    if (!req.session || !req.session.userId) {
       return res.status(401).json({
         success: false,
         message: 'Not authorized to access this route'
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: 'JWT secret not configured'
+    // Get user from database
+    const user = await User.findById(req.session.userId).select('-password');
+
+    if (!user) {
+      // Clear invalid session
+      req.session.destroy((err) => {
+        if (err) console.error('Error destroying session:', err);
       });
-    }
-
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
-
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-
-      req.user = user;
-      next();
-    } catch (error) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: 'User not found'
       });
     }
+
+    req.user = user;
+    next();
   } catch (error) {
     return res.status(500).json({
       success: false,

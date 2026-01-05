@@ -20,10 +20,38 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'family_member'],
     default: 'family_member'
   },
+  avatar: {
+    type: String,
+    default: ''
+  },
   name: {
     type: String,
     required: [true, 'Name is required'],
     trim: true
+  },
+  bio: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  location: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  occupation: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  linkedFamilyMemberId: {
+    type: Number,
+    default: null
   }
 }, {
   timestamps: true

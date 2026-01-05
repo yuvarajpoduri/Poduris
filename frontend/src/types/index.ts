@@ -3,6 +3,14 @@ export interface User {
   email: string;
   name: string;
   role: 'admin' | 'family_member';
+  status?: 'pending' | 'approved' | 'rejected';
+  avatar?: string;
+  bio?: string;
+  location?: string;
+  occupation?: string;
+  linkedFamilyMemberId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FamilyMember {
@@ -56,6 +64,7 @@ export interface GalleryImage {
     email: string;
   };
   familyMemberId: number | null;
+  status?: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
 }
@@ -90,5 +99,33 @@ export interface ApiResponse<T> {
   data?: T;
   message?: string;
   count?: number;
+}
+
+export interface ChatMessage {
+  _id: string;
+  sender: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  receiver?: {
+    _id: string;
+    name: string;
+    email: string;
+  } | null;
+  message: string;
+  replyTo?: {
+    _id: string;
+    message: string;
+    sender: {
+      _id: string;
+      name: string;
+      avatar?: string;
+    };
+  } | null;
+  isGroupChat: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 

@@ -27,6 +27,11 @@ const gallerySchema = new mongoose.Schema({
   familyMemberId: {
     type: Number,
     default: null
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
   }
 }, {
   timestamps: true
