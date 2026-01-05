@@ -1,26 +1,21 @@
-import User from '../models/User.js';
+import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   try {
-    // Check if user is in session
-    if (!req.session || !req.session.userId) {
+    if (!req.session || !req.session.user) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: "Not authorized to access this route",
       });
     }
 
-    // Get user from database
-    const user = await User.findById(req.session.userId).select('-password');
+    const user = await User.findById(req.session.user.id).select("-password");
 
     if (!user) {
-      // Clear invalid session
-      req.session.destroy((err) => {
-        if (err) console.error('Error destroying session:', err);
-      });
+      req.session.destroy(() => {});
       return res.status(401).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -29,8 +24,7 @@ export const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Authentication error',
-      error: error.message
+      message: "Authentication error",
     });
   }
 };
@@ -40,14 +34,14 @@ export const authorize = (...roles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized'
+        message: "Not authorized",
       });
     }
 
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: `User role '${req.user.role}' is not authorized to access this route`
+        message: "Forbidden",
       });
     }
 
