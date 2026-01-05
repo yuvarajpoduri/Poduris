@@ -49,8 +49,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     name: "family_tree_sid",
-    secret:
-      process.env.SESSION_SECRET || "your-secret-key-change-in-production",
+    secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
