@@ -6,7 +6,7 @@ import { usersAPI, uploadAPI, familyMembersAPI } from "../utils/api";
 import type { FamilyMember } from "../types";
 
 export const Profile: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const [familyMember, setFamilyMember] = useState<FamilyMember | null>(null);
   const [name, setName] = useState("");
