@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
-import { Card } from '../components/Card';
 import { AdminFamilyMembers } from '../components/admin/AdminFamilyMembers';
 import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
 import { AdminGallery } from '../components/admin/AdminGallery';
