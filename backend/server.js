@@ -24,10 +24,12 @@ connectDB();
 
 const app = express();
 
-// --- UPDATED CORS CONFIGURATION ---
+// --- CORS CONFIGURATION ---
+// Combined local and production origins
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://poduris.onrender.com",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -37,8 +39,7 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) === -1) {
-        const msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
         return callback(new Error(msg), false);
       }
       return callback(null, true);
@@ -47,29 +48,15 @@ app.use(
   })
 );
 
-// Middleware
-<<<<<<< HEAD
-=======
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://poduris.onrender.com"
-    ],
-    credentials: true
-  })
-);
-
->>>>>>> cfafd3c76027ac7f3a5705296173f72a1e34a1d8
+// Standard Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- UPDATED SESSION CONFIGURATION ---
+// --- SESSION CONFIGURATION ---
 app.use(
   session({
     name: "family_tree_sid",
-    secret:
-      process.env.SESSION_SECRET || "your-secret-key-change-in-production",
+    secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -79,7 +66,7 @@ app.use(
     cookie: {
       // Set to true only if using HTTPS (Production)
       secure: process.env.NODE_ENV === "production",
-      // 'lax' is required for localhost cross-origin; 'none' for production cross-domain
+      // 'lax' for local dev; 'none' for cross-site production (requires secure: true)
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       httpOnly: true,
       maxAge: 14 * 24 * 60 * 60 * 1000,
@@ -105,7 +92,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Error handler
+// Error handler (Must be last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
