@@ -1,10 +1,31 @@
 import User from "../models/User.js";
+import FamilyMember from "../models/FamilyMember.js";
 import mongoose from "mongoose";
 
 export const getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: users.length, data: users });
+    
+    // Populate linkedFamilyMember data for each user
+    const usersWithFamilyMembers = await Promise.all(
+      users.map(async (user) => {
+        const userObj = user.toObject();
+        if (user.linkedFamilyMemberId) {
+          const familyMember = await FamilyMember.findOne({ id: user.linkedFamilyMemberId });
+          if (familyMember) {
+            userObj.linkedFamilyMember = {
+              id: familyMember.id,
+              name: familyMember.name,
+              avatar: familyMember.avatar,
+              generation: familyMember.generation,
+            };
+          }
+        }
+        return userObj;
+      })
+    );
+    
+    res.status(200).json({ success: true, count: usersWithFamilyMembers.length, data: usersWithFamilyMembers });
   } catch (error) {
     next(error);
   }
@@ -33,27 +54,48 @@ export const getUser = async (req, res, next) => {
 export const approveUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { role, linkedFamilyMemberId } = req.body;
+    const { role } = req.body;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid user ID" });
     }
-    const updateData = { status: "approved" };
-    if (role) updateData.role = role;
-    if (linkedFamilyMemberId !== undefined)
-      updateData.linkedFamilyMemberId = linkedFamilyMemberId;
-
-    const user = await User.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    }).select("-password");
+    
+    const user = await User.findById(id);
     if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
-    res.status(200).json({ success: true, data: user });
+    
+    // Ensure user has linkedFamilyMemberId before approval
+    if (!user.linkedFamilyMemberId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User must be linked to a family member before approval" });
+    }
+    
+    const updateData = { status: "approved" };
+    if (role) updateData.role = role;
+
+    const updatedUser = await User.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+    
+    // Get linked FamilyMember
+    const linkedFamilyMember = await FamilyMember.findOne({ id: updatedUser.linkedFamilyMemberId });
+    const userObj = updatedUser.toObject();
+    if (linkedFamilyMember) {
+      userObj.linkedFamilyMember = {
+        id: linkedFamilyMember.id,
+        name: linkedFamilyMember.name,
+        avatar: linkedFamilyMember.avatar,
+        generation: linkedFamilyMember.generation,
+      };
+    }
+    
+    res.status(200).json({ success: true, data: userObj });
   } catch (error) {
     next(error);
   }
@@ -111,30 +153,60 @@ export const updateUser = async (req, res, next) => {
 // @access  Private
 export const updateMyProfile = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-
-    const allowedFields = ['name', 'avatar', 'bio', 'location', 'occupation'];
-    const updateData = {};
-
-    allowedFields.forEach((field) => {
-      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
-        // @ts-ignore - dynamic assignment on plain object
-        updateData[field] = req.body[field];
-      }
-    });
-
-    const user = await User.findByIdAndUpdate(userId, updateData, {
-      new: true,
-      runValidators: true,
-    }).select("-password");
-
+    const userId = req.session.userId;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Not authorized" });
+    }
+    
+    const user = await User.findById(userId);
     if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+    
+    // Only approved users can update their profile
+    if (user.status !== "approved") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Only approved users can update their profile" });
+    }
+    
+    // User must be linked to a FamilyMember
+    if (!user.linkedFamilyMemberId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User is not linked to a family member" });
+    }
+    
+    // Update the linked FamilyMember instead of User
+    const allowedFields = ['name', 'avatar', 'bio', 'location', 'occupation', 'birthDate', 'gender'];
+    const updateData = {};
 
-    res.status(200).json({ success: true, data: user });
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    const familyMember = await FamilyMember.findOneAndUpdate(
+      { id: user.linkedFamilyMemberId },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!familyMember) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Linked family member not found" });
+    }
+    
+    // Also update user name to match FamilyMember name
+    await User.findByIdAndUpdate(userId, { name: familyMember.name }, { new: true });
+
+    res.status(200).json({ success: true, data: familyMember });
   } catch (error) {
     next(error);
   }

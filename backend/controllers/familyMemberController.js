@@ -29,6 +29,36 @@ export const getFamilyMembers = async (req, res, next) => {
   }
 };
 
+// @desc    Get available (unlinked) family members for signup
+// @route   GET /api/family-members/available
+// @access  Public (for signup)
+export const getAvailableFamilyMembers = async (req, res, next) => {
+  try {
+    const User = (await import("../models/User.js")).default;
+    // Get all users with linkedFamilyMemberId
+    const linkedUsers = await User.find({
+      linkedFamilyMemberId: { $ne: null },
+    }).select("linkedFamilyMemberId");
+
+    const linkedIds = linkedUsers
+      .map((u) => u.linkedFamilyMemberId)
+      .filter((id) => id !== null && id !== undefined);
+
+    // Get all family members not linked to any user
+    const availableMembers = await FamilyMember.find({
+      id: { $nin: linkedIds },
+    }).sort({ generation: 1, id: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: availableMembers.length,
+      data: availableMembers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get single family member with relationships
 // @route   GET /api/family-members/:id
 // @access  Private

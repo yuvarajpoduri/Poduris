@@ -9,6 +9,17 @@ export interface User {
   location?: string;
   occupation?: string;
   linkedFamilyMemberId?: number | null;
+  linkedFamilyMember?: {
+    id: number;
+    name: string;
+    avatar: string;
+    generation: number;
+    birthDate?: string;
+    gender?: 'male' | 'female' | 'other';
+    occupation?: string;
+    location?: string;
+    bio?: string;
+  } | null;
   createdAt?: string;
   updatedAt?: string;
 }

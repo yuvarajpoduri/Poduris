@@ -1,29 +1,55 @@
 import User from "../models/User.js";
+import FamilyMember from "../models/FamilyMember.js";
 
 export const register = async (req, res, next) => {
   try {
-    const { email, password, name, role } = req.body;
-    if (!email || !password || !name) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Please provide email, password, and name",
-        });
+    const { email, password, linkedFamilyMemberId } = req.body;
+    if (!email || !password || !linkedFamilyMemberId) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide email, password, and select a family member",
+      });
     }
+
+    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res
         .status(400)
         .json({ success: false, message: "User already exists" });
     }
+
+    // Validate that FamilyMember exists
+    const familyMember = await FamilyMember.findOne({
+      id: linkedFamilyMemberId,
+    });
+    if (!familyMember) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Selected family member not found" });
+    }
+
+    // Check if FamilyMember is already linked to another user
+    const existingLink = await User.findOne({ linkedFamilyMemberId });
+    if (existingLink) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "This family member is already linked to another user",
+        });
+    }
+
+    // Create user with linkedFamilyMemberId
     const user = await User.create({
       email,
       password,
-      name,
-      role: role || "family_member",
-      status: role === "admin" ? "approved" : "pending",
+      name: familyMember.name, // Use FamilyMember name initially
+      linkedFamilyMemberId,
+      role: "family_member",
+      status: "pending",
     });
+
     res.status(201).json({
       success: true,
       message: "Registration successful. Please wait for admin approval.",
@@ -33,6 +59,7 @@ export const register = async (req, res, next) => {
         name: user.name,
         role: user.role,
         status: user.status,
+        linkedFamilyMemberId: user.linkedFamilyMemberId,
       },
     });
   } catch (error) {
@@ -96,6 +123,15 @@ export const getMe = async (req, res, next) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+
+    // Get linked FamilyMember if exists
+    let linkedFamilyMember = null;
+    if (user.linkedFamilyMemberId) {
+      linkedFamilyMember = await FamilyMember.findOne({
+        id: user.linkedFamilyMemberId,
+      });
+    }
+
     res.status(200).json({
       success: true,
       user: {
@@ -104,6 +140,20 @@ export const getMe = async (req, res, next) => {
         name: user.name,
         role: user.role,
         status: user.status || "approved",
+        linkedFamilyMemberId: user.linkedFamilyMemberId,
+        linkedFamilyMember: linkedFamilyMember
+          ? {
+              id: linkedFamilyMember.id,
+              name: linkedFamilyMember.name,
+              avatar: linkedFamilyMember.avatar,
+              generation: linkedFamilyMember.generation,
+              birthDate: linkedFamilyMember.birthDate,
+              gender: linkedFamilyMember.gender,
+              occupation: linkedFamilyMember.occupation,
+              location: linkedFamilyMember.location,
+              bio: linkedFamilyMember.bio,
+            }
+          : null,
       },
     });
   } catch (error) {

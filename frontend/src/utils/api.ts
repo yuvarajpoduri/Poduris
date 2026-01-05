@@ -40,11 +40,11 @@ export const authAPI = {
   register: async (
     email: string,
     password: string,
-    name: string
+    linkedFamilyMemberId: number
   ): Promise<{ user: User }> => {
     const response = await api.post<{ success: boolean; user: User }>(
       "/auth/register",
-      { email, password, name }
+      { email, password, linkedFamilyMemberId }
     );
     return { user: response.data.user };
   },
@@ -61,6 +61,12 @@ export const authAPI = {
 };
 
 export const familyMembersAPI = {
+  getAvailable: async (): Promise<FamilyMember[]> => {
+    const response = await api.get<ApiResponse<FamilyMember[]>>(
+      "/family-members/available"
+    );
+    return response.data.data || [];
+  },
   getAll: async (): Promise<FamilyMember[]> => {
     const response = await api.get<ApiResponse<FamilyMember[]>>(
       "/family-members"
@@ -256,8 +262,8 @@ export const usersAPI = {
     const response = await api.put<ApiResponse<User>>(`/users/${id}`, user);
     return response.data.data!;
   },
-  updateMyProfile: async (user: Partial<User>): Promise<User> => {
-    const response = await api.put<ApiResponse<User>>(`/users/me/profile`, user);
+  updateMyProfile: async (profile: Partial<FamilyMember>): Promise<FamilyMember> => {
+    const response = await api.put<ApiResponse<FamilyMember>>(`/users/me/profile`, profile);
     return response.data.data!;
   },
 };

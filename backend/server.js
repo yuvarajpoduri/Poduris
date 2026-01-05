@@ -6,10 +6,6 @@ import MongoStore from "connect-mongo";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
-// Load env vars
-dotenv.config();
-
-// Import routes
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import familyMemberRoutes from "./routes/familyMemberRoutes.js";
@@ -19,26 +15,26 @@ import calendarRoutes from "./routes/calendarRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 
-// Connect to database
+dotenv.config();
 connectDB();
 
 const app = express();
 
-// --- UPDATED CORS CONFIGURATION ---
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://poduris.onrender.com",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) === -1) {
-        const msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
         return callback(new Error(msg), false);
       }
       return callback(null, true);
@@ -47,24 +43,9 @@ app.use(
   })
 );
 
-// Middleware
-<<<<<<< HEAD
-=======
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://poduris.onrender.com"
-    ],
-    credentials: true
-  })
-);
-
->>>>>>> cfafd3c76027ac7f3a5705296173f72a1e34a1d8
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- UPDATED SESSION CONFIGURATION ---
 app.use(
   session({
     name: "family_tree_sid",
@@ -74,12 +55,10 @@ app.use(
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI,
-      ttl: 14 * 24 * 60 * 60, // 14 days
+      ttl: 14 * 24 * 60 * 60,
     }),
     cookie: {
-      // Set to true only if using HTTPS (Production)
       secure: process.env.NODE_ENV === "production",
-      // 'lax' is required for localhost cross-origin; 'none' for production cross-domain
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       httpOnly: true,
       maxAge: 14 * 24 * 60 * 60 * 1000,
@@ -87,7 +66,6 @@ app.use(
   })
 );
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/family-members", familyMemberRoutes);
@@ -97,7 +75,6 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 
-// Health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -105,7 +82,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Error handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
@@ -117,7 +93,6 @@ app.listen(PORT, () => {
   );
 });
 
-// Helpful debug log for Cloudinary
 if (process.env.NODE_ENV !== "production") {
   console.log("Cloudinary Configured:", !!process.env.CLOUDINARY_API_KEY);
 }

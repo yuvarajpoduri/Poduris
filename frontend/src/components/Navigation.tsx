@@ -41,6 +41,16 @@ export const Navigation: React.FC = () => {
                   {item.label}
                 </Link>
               ))}
+              <Link
+                to="/profile"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive('/profile')
+                    ? 'bg-accent-blue text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Profile
+              </Link>
               {isAdmin() && (
                 <Link
                   to="/admin"
@@ -56,7 +66,20 @@ export const Navigation: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">{user?.name}</span>
+              <div className="flex items-center space-x-2">
+                {user?.linkedFamilyMember?.avatar ? (
+                  <img
+                    src={user.linkedFamilyMember.avatar}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-accent-blue"
+                  />
+                ) : user?.name ? (
+                  <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-sm font-semibold text-accent-blue">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                ) : null}
+                <span className="text-sm text-gray-600">{user?.name}</span>
+              </div>
               <button
                 onClick={logout}
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -75,14 +98,15 @@ export const Navigation: React.FC = () => {
             <Link
               key={item.path}
               to={item.path}
+              onClick={() => setMobileMenuOpen(false)}
               className={`flex flex-col items-center justify-center space-y-1 transition-colors ${
                 isActive(item.path)
                   ? 'text-accent-blue'
                   : 'text-gray-500'
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-lg sm:text-xl">{item.icon}</span>
+              <span className="text-[10px] sm:text-xs font-medium">{item.label}</span>
             </Link>
           ))}
         </div>
@@ -118,7 +142,29 @@ export const Navigation: React.FC = () => {
         {mobileMenuOpen && (
           <div className="border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-2">
-              <div className="text-sm text-gray-600 mb-2">Logged in as {user?.name}</div>
+              <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-gray-200">
+                {user?.linkedFamilyMember?.avatar ? (
+                  <img
+                    src={user.linkedFamilyMember.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue"
+                  />
+                ) : user?.name ? (
+                  <div className="w-10 h-10 rounded-full bg-accent-blue/20 flex items-center justify-center text-sm font-semibold text-accent-blue">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                ) : null}
+                <div className="text-sm text-gray-600">Logged in as {user?.name}</div>
+              </div>
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700 ${
+                  isActive('/profile') ? 'bg-gray-100 font-medium' : ''
+                }`}
+              >
+                Profile
+              </Link>
               {isAdmin() && (
                 <Link
                   to="/admin"

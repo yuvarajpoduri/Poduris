@@ -152,9 +152,30 @@ export const AdminUsers: React.FC = () => {
               <Card key={user.id || (user as any)._id}>
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-semibold text-black">{user.name}</h4>
                       <p className="text-sm text-gray-600">{user.email}</p>
+                      {user.linkedFamilyMember ? (
+                        <div className="mt-2 flex items-center space-x-2">
+                          {user.linkedFamilyMember.avatar ? (
+                            <img
+                              src={user.linkedFamilyMember.avatar}
+                              alt={user.linkedFamilyMember.name}
+                              className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-xs font-semibold text-accent-blue">
+                              {user.linkedFamilyMember.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-medium text-black">{user.linkedFamilyMember.name}</p>
+                            <p className="text-xs text-gray-500">Gen {user.linkedFamilyMember.generation}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-yellow-600 mt-1">⚠️ No family member linked</p>
+                      )}
                     </div>
                     <span
                       className={`px-2 py-1 text-xs text-white rounded ${getStatusColor(
@@ -168,6 +189,7 @@ export const AdminUsers: React.FC = () => {
                     <button
                       onClick={() => handleApprove(user)}
                       className="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded transition-colors"
+                      disabled={!user.linkedFamilyMemberId}
                     >
                       Approve
                     </button>
@@ -196,12 +218,35 @@ export const AdminUsers: React.FC = () => {
               <Card key={user.id || (user as any)._id}>
                 <div className="space-y-2">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-semibold text-black">{user.name}</h4>
                       <p className="text-sm text-gray-600">{user.email}</p>
                       <p className="text-xs text-gray-500 capitalize">
                         {user.role}
                       </p>
+                      {user.linkedFamilyMember ? (
+                        <div className="mt-2 flex items-center space-x-2">
+                          {user.linkedFamilyMember.avatar ? (
+                            <img
+                              src={user.linkedFamilyMember.avatar}
+                              alt={user.linkedFamilyMember.name}
+                              className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-xs font-semibold text-accent-blue">
+                              {user.linkedFamilyMember.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-medium text-black">{user.linkedFamilyMember.name}</p>
+                            <p className="text-xs text-gray-500">Gen {user.linkedFamilyMember.generation} • ID: {user.linkedFamilyMember.id}</p>
+                          </div>
+                        </div>
+                      ) : user.linkedFamilyMemberId ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Linked to Family Member ID: {user.linkedFamilyMemberId}
+                        </p>
+                      ) : null}
                     </div>
                     <span
                       className={`px-2 py-1 text-xs text-white rounded ${getStatusColor(
@@ -211,11 +256,6 @@ export const AdminUsers: React.FC = () => {
                       {user.status}
                     </span>
                   </div>
-                  {user.linkedFamilyMemberId && (
-                    <p className="text-xs text-gray-500">
-                      Linked to Family Member ID: {user.linkedFamilyMemberId}
-                    </p>
-                  )}
                 </div>
               </Card>
             ))}
@@ -268,13 +308,43 @@ export const AdminUsers: React.FC = () => {
       >
         <form onSubmit={handleApproveSubmit} className="space-y-4">
           {selectedUser && (
-            <div className="space-y-2 text-black">
-              <p>
-                <strong>Name:</strong> {selectedUser.name}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedUser.email}
-              </p>
+            <div className="space-y-3 text-black">
+              <div>
+                <p>
+                  <strong>Name:</strong> {selectedUser.name}
+                </p>
+                <p>
+                  <strong>Email:</strong> {selectedUser.email}
+                </p>
+              </div>
+              {selectedUser.linkedFamilyMember ? (
+                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm font-semibold mb-2">Linked Family Member:</p>
+                  <div className="flex items-center space-x-3">
+                    {selectedUser.linkedFamilyMember.avatar ? (
+                      <img
+                        src={selectedUser.linkedFamilyMember.avatar}
+                        alt={selectedUser.linkedFamilyMember.name}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-accent-blue"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-accent-blue/20 flex items-center justify-center text-lg font-semibold text-accent-blue">
+                        {selectedUser.linkedFamilyMember.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">{selectedUser.linkedFamilyMember.name}</p>
+                      <p className="text-sm text-gray-600">Generation {selectedUser.linkedFamilyMember.generation}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                    ⚠️ No family member linked. User must be linked to a family member before approval.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -297,30 +367,6 @@ export const AdminUsers: React.FC = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">
-              Link to Family Member (optional)
-            </label>
-            <select
-              value={formData.linkedFamilyMemberId || ""}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  linkedFamilyMemberId: e.target.value
-                    ? parseInt(e.target.value)
-                    : null,
-                })
-              }
-              className="w-full px-3 py-2 border border-black rounded-md text-black"
-            >
-              <option value="">None</option>
-              {familyMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name} (ID: {member.id})
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
@@ -335,7 +381,8 @@ export const AdminUsers: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800"
+              disabled={!selectedUser?.linkedFamilyMemberId}
+              className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Approve User
             </button>
