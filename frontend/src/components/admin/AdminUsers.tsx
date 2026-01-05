@@ -6,7 +6,6 @@ import type { User, FamilyMember } from "../../types";
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
