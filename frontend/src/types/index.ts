@@ -66,12 +66,12 @@ export interface CalendarEvent {
   title: string;
   memberId?: number;
   memberName?: string;
-  member1Id?: number;
-  member2Id?: number;
   member1Name?: string;
   member2Name?: string;
   avatar?: string;
+  birthDate?: string;
 }
+
 
 export interface DashboardStats {
   totalMembers: number;
