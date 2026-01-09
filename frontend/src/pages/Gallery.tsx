@@ -105,8 +105,7 @@ export const Gallery: React.FC = () => {
     );
   }
 
-  // Permission Check: Admin or Approved Member
-  const canUpload = user && (isAdmin() || user.status === "approved");
+  const canUpload = user && (isAdmin() || (user.status === "active"));
 
   return (
     <Layout>
@@ -149,7 +148,6 @@ export const Gallery: React.FC = () => {
           </div>
         )}
 
-        {/* View Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={() => { setIsModalOpen(false); setSelectedImage(null); }}
@@ -172,7 +170,6 @@ export const Gallery: React.FC = () => {
           )}
         </Modal>
 
-        {/* Upload Modal */}
         <Modal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
