@@ -34,7 +34,7 @@ export const AdminUsers: React.FC = () => {
     setSelectedUser(user);
     setFormData({
       role: user.role,
-      linkedFamilyMemberId: user.linkedFamilyMemberId || null,
+      linkedFamilyMemberId: user.linkedFamilyMemberId || user.familyMemberId || null,
     });
     setIsModalOpen(true);
   };
@@ -43,7 +43,7 @@ export const AdminUsers: React.FC = () => {
     e.preventDefault();
     if (!selectedUser) return;
 
-    const userId = selectedUser.id || (selectedUser as any)._id;
+    const userId = selectedUser.id;
 
     if (!userId) {
       setError("Cannot approve: User ID is missing");
@@ -65,7 +65,7 @@ export const AdminUsers: React.FC = () => {
   };
 
   const handleReject = async (user: User) => {
-    const userId = user.id || (user as any)._id;
+    const userId = user.id;
 
     if (!userId) {
       setError("Cannot reject: User ID is missing");
@@ -86,9 +86,9 @@ export const AdminUsers: React.FC = () => {
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case "approved":
+      case "active":
         return "bg-green-500";
-      case "rejected":
+      case "inactive":
         return "bg-red-500";
       case "pending":
         return "bg-yellow-500";
@@ -98,14 +98,14 @@ export const AdminUsers: React.FC = () => {
   };
 
   const pendingUsers = users.filter((u) => u.status === "pending");
-  const approvedUsers = users.filter((u) => u.status === "approved");
-  const rejectedUsers = users.filter((u) => u.status === "rejected");
+  const approvedUsers = users.filter((u) => u.status === "active");
+  const rejectedUsers = users.filter((u) => u.status === "inactive");
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <div className="text-center">
-          <div className="animate-pulse-soft text-4xl mb-4">⏳</div>
+          <div className="animate-pulse text-4xl mb-4">⏳</div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export const AdminUsers: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingUsers.map((user) => (
-              <Card key={user.id || (user as any)._id}>
+              <Card key={user.id}>
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -152,7 +152,7 @@ export const AdminUsers: React.FC = () => {
                               className="w-8 h-8 rounded-full object-cover border border-gray-300"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-xs font-semibold text-accent-blue">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-600">
                               {user.linkedFamilyMember.name.charAt(0).toUpperCase()}
                             </div>
                           )}
@@ -177,7 +177,7 @@ export const AdminUsers: React.FC = () => {
                     <button
                       onClick={() => handleApprove(user)}
                       className="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-2 rounded transition-colors"
-                      disabled={!user.linkedFamilyMemberId}
+                      disabled={!(user.linkedFamilyMemberId || user.familyMemberId)}
                     >
                       Approve
                     </button>
@@ -203,14 +203,14 @@ export const AdminUsers: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {approvedUsers.map((user) => (
-              <Card key={user.id || (user as any)._id}>
+              <Card key={user.id}>
                 <div className="space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-semibold text-black">{user.name}</h4>
                       <p className="text-sm text-gray-600">{user.email}</p>
                       <p className="text-xs text-gray-500 capitalize">
-                        {user.role}
+                        {user.role === 'family_member' ? 'Family Member' : 'Admin'}
                       </p>
                       {user.linkedFamilyMember ? (
                         <div className="mt-2 flex items-center space-x-2">
@@ -221,7 +221,7 @@ export const AdminUsers: React.FC = () => {
                               className="w-8 h-8 rounded-full object-cover border border-gray-300"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-xs font-semibold text-accent-blue">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-600">
                               {user.linkedFamilyMember.name.charAt(0).toUpperCase()}
                             </div>
                           )}
@@ -230,9 +230,9 @@ export const AdminUsers: React.FC = () => {
                             <p className="text-xs text-gray-500">Gen {user.linkedFamilyMember.generation} • ID: {user.linkedFamilyMember.id}</p>
                           </div>
                         </div>
-                      ) : user.linkedFamilyMemberId ? (
+                      ) : (user.linkedFamilyMemberId || user.familyMemberId) ? (
                         <p className="text-xs text-gray-500 mt-1">
-                          Linked to Family Member ID: {user.linkedFamilyMemberId}
+                          Linked to Family Member ID: {user.linkedFamilyMemberId || user.familyMemberId}
                         </p>
                       ) : null}
                     </div>
@@ -259,7 +259,7 @@ export const AdminUsers: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rejectedUsers.map((user) => (
-              <Card key={user.id || (user as any)._id}>
+              <Card key={user.id}>
                 <div className="space-y-2">
                   <div className="flex items-start justify-between">
                     <div>
@@ -267,7 +267,7 @@ export const AdminUsers: React.FC = () => {
                       <p className="text-sm text-gray-600">{user.email}</p>
                     </div>
                     <span
-                      className={`px-2 py-1 text-xs text-white rounded ${getStatusColor(
+                      className={`px-2 py-1 text-white rounded ${getStatusColor(
                         user.status
                       )}`}
                     >
@@ -306,17 +306,17 @@ export const AdminUsers: React.FC = () => {
                 </p>
               </div>
               {selectedUser.linkedFamilyMember ? (
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <p className="text-sm font-semibold mb-2">Linked Family Member:</p>
                   <div className="flex items-center space-x-3">
                     {selectedUser.linkedFamilyMember.avatar ? (
                       <img
                         src={selectedUser.linkedFamilyMember.avatar}
                         alt={selectedUser.linkedFamilyMember.name}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-accent-blue"
+                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-500"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-accent-blue/20 flex items-center justify-center text-lg font-semibold text-accent-blue">
+                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-lg font-semibold text-blue-600">
                         {selectedUser.linkedFamilyMember.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -327,8 +327,8 @@ export const AdminUsers: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
                     ⚠️ No family member linked. User must be linked to a family member before approval.
                   </p>
                 </div>
@@ -368,7 +368,7 @@ export const AdminUsers: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={!selectedUser?.linkedFamilyMemberId}
+              disabled={!(selectedUser?.linkedFamilyMemberId || selectedUser?.familyMemberId)}
               className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Approve User
