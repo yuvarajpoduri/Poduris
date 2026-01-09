@@ -58,9 +58,9 @@ export const authAPI = {
 
 export const familyMembersAPI = {
   getAll: async (search?: string): Promise<FamilyMember[]> => {
-    const params = search ? new URLSearchParams({ search }) : '';
+    const params = search ? new URLSearchParams({ search }) : "";
     const response = await api.get<ApiResponse<FamilyMember[]>>(
-      `/family-members${params ? `?${params}` : ''}`
+      `/family-members${params ? `?${params}` : ""}`
     );
     return response.data.data || [];
   },
@@ -254,7 +254,7 @@ export const usersAPI = {
     return response.data.data!;
   },
   updateMyProfile: async (profile: Partial<FamilyMember>): Promise<FamilyMember> => {
-    const response = await api.put<ApiResponse<FamilyMember>>(`/users/me/profile`, profile);
+    const response = await api.put<ApiResponse<FamilyMember>>("/users/me/profile", profile);
     return response.data.data!;
   },
 };
