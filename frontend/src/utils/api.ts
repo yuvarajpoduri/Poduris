@@ -37,17 +37,6 @@ export const authAPI = {
     );
     return { user: response.data.user };
   },
-  register: async (
-    email: string,
-    password: string,
-    linkedFamilyMemberId: number
-  ): Promise<{ user: User }> => {
-    const response = await api.post<{ success: boolean; user: User }>(
-      "/auth/register",
-      { email, password, linkedFamilyMemberId }
-    );
-    return { user: response.data.user };
-  },
   logout: async (): Promise<void> => {
     await api.post("/auth/logout");
     localStorage.removeItem("user");
@@ -61,15 +50,10 @@ export const authAPI = {
 };
 
 export const familyMembersAPI = {
-  getAvailable: async (): Promise<FamilyMember[]> => {
+  getAll: async (search?: string): Promise<FamilyMember[]> => {
+    const params = search ? new URLSearchParams({ search }) : '';
     const response = await api.get<ApiResponse<FamilyMember[]>>(
-      "/family-members/available"
-    );
-    return response.data.data || [];
-  },
-  getAll: async (): Promise<FamilyMember[]> => {
-    const response = await api.get<ApiResponse<FamilyMember[]>>(
-      "/family-members"
+      `/family-members${params ? `?${params}` : ''}`
     );
     return response.data.data || [];
   },
@@ -269,34 +253,17 @@ export const usersAPI = {
 };
 
 export const chatAPI = {
-  getUsers: async (): Promise<User[]> => {
-    const response = await api.get<ApiResponse<User[]>>("/chat/users");
-    return response.data.data || [];
-  },
-  getMessages: async (
-    receiverId?: string,
-    isGroupChat?: boolean
-  ): Promise<ChatMessage[]> => {
-    const params = new URLSearchParams();
-    if (receiverId) params.append("receiverId", receiverId);
-    if (isGroupChat !== undefined)
-      params.append("isGroupChat", isGroupChat.toString());
-    const response = await api.get<ApiResponse<ChatMessage[]>>(
-      `/chat?${params.toString()}`
-    );
+  getMessages: async (): Promise<ChatMessage[]> => {
+    const response = await api.get<ApiResponse<ChatMessage[]>>("/chat");
     return response.data.data || [];
   },
   sendMessage: async (
     message: string,
-    receiverId?: string,
-    replyToId?: string,
-    isGroupChat?: boolean
+    replyToId?: string
   ): Promise<ChatMessage> => {
     const response = await api.post<ApiResponse<ChatMessage>>("/chat", {
       message,
-      receiverId,
       replyToId,
-      isGroupChat,
     });
     return response.data.data!;
   },

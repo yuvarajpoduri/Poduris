@@ -3,12 +3,11 @@ import { Layout } from '../components/Layout';
 import { AdminFamilyMembers } from '../components/admin/AdminFamilyMembers';
 import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
 import { AdminGallery } from '../components/admin/AdminGallery';
-import { AdminUsers } from '../components/admin/AdminUsers';
 
-type AdminTab = 'users' | 'family' | 'announcements' | 'gallery';
+type AdminTab = 'family' | 'announcements' | 'gallery';
 
 export const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('family');
 
   return (
     <Layout>
@@ -17,16 +16,6 @@ export const Admin: React.FC = () => {
 
         <div className="mb-6 border-b border-black">
           <nav className="flex space-x-1 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`px-4 py-2 font-medium whitespace-nowrap ${
-                activeTab === 'users'
-                  ? 'bg-black text-white'
-                  : 'text-black hover:bg-gray-100'
-              }`}
-            >
-              Users
-            </button>
             <button
               onClick={() => setActiveTab('family')}
               className={`px-4 py-2 font-medium whitespace-nowrap ${
@@ -61,7 +50,6 @@ export const Admin: React.FC = () => {
         </div>
 
         <div>
-          {activeTab === 'users' && <AdminUsers />}
           {activeTab === 'family' && <AdminFamilyMembers />}
           {activeTab === 'announcements' && <AdminAnnouncements />}
           {activeTab === 'gallery' && <AdminGallery />}

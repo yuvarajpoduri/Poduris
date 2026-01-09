@@ -67,9 +67,9 @@ export const Navigation: React.FC = () => {
             
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                {user?.linkedFamilyMember?.avatar ? (
+                {user?.avatar ? (
                   <img
-                    src={user.linkedFamilyMember.avatar}
+                    src={user.avatar}
                     alt={user.name}
                     className="w-8 h-8 rounded-full object-cover border-2 border-accent-blue"
                   />
@@ -143,9 +143,9 @@ export const Navigation: React.FC = () => {
           <div className="border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-2">
               <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-gray-200">
-                {user?.linkedFamilyMember?.avatar ? (
+                {user?.avatar ? (
                   <img
-                    src={user.linkedFamilyMember.avatar}
+                    src={user.avatar}
                     alt={user.name}
                     className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue"
                   />

@@ -55,7 +55,8 @@ export const getCalendarEvents = async (req, res, next) => {
 
         processedPairs.add(pairKey);
 
-        const anniversary = getAnniversaryDate(members, member.id);
+        // Use anniversaryDate field if it exists, otherwise fall back to calculated date
+        let anniversary = member.anniversaryDate || getAnniversaryDate(members, member.id);
         if (!anniversary) continue;
 
         const ann = new Date(anniversary);

@@ -90,11 +90,6 @@ export const Login: React.FC = () => {
                 {loading ? t('common.loading') : t('auth.login')}
               </button>
             </div>
-            <div className="text-center">
-              <Link to="/register" className="text-sm text-accent-blue hover:underline font-medium">
-                {t('auth.register')}
-              </Link>
-            </div>
           </form>
         </div>
       </div>

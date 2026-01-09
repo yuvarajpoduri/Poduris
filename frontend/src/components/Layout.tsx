@@ -95,6 +95,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 dark:text-gray-400 hidden xl:block">{user?.name}</span>
+              <Link
+                to="/profile"
+                className="tap-target"
+                title="Profile"
+              >
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer"
+                  />
+                ) : user?.name ? (
+                  <div className="w-10 h-10 rounded-full bg-accent-blue/20 hover:bg-accent-blue/30 flex items-center justify-center text-sm font-semibold text-accent-blue border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                ) : null}
+              </Link>
               <LanguageToggle />
               <ThemeToggle />
               <button
@@ -116,6 +133,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             Poduris
           </Link>
           <div className="flex items-center space-x-3">
+            <Link
+              to="/profile"
+              className="tap-target"
+              title="Profile"
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer"
+                />
+              ) : user?.name ? (
+                <div className="w-10 h-10 rounded-full bg-accent-blue/20 hover:bg-accent-blue/30 flex items-center justify-center text-sm font-semibold text-accent-blue border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              ) : null}
+            </Link>
             <LanguageToggle />
             <ThemeToggle />
             <button
@@ -160,6 +194,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </Link>
                   );
                 })}
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 tap-target ${
+                    isActive('/profile')
+                      ? 'bg-accent-blue text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-5 h-5 rounded-full object-cover"
+                    />
+                  ) : user?.name ? (
+                    <div className="w-5 h-5 rounded-full bg-accent-blue/20 flex items-center justify-center text-xs font-semibold text-accent-blue">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  ) : null}
+                  <span>{t('nav.profile') || 'Profile'}</span>
+                </Link>
                 {isAdmin() && (
                   <Link
                     to="/admin"

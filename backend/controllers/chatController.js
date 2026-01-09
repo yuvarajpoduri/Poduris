@@ -1,30 +1,50 @@
 import Chat from '../models/Chat.js';
-import User from '../models/User.js';
+import FamilyMember from '../models/FamilyMember.js';
 import mongoose from 'mongoose';
 
 // @desc    Get group chat messages only
 // @route   GET /api/chat
-// @access  Private
+// @access  Private (Family members and admin)
 export const getChats = async (req, res, next) => {
   try {
-    // Force group chat only – ignore any one-to-one filters
+    // Only group chat messages
     const query = {
-      isGroupChat: true,
-      deletedAt: null
+      isGroupChat: true
     };
 
     const chats = await Chat.find(query)
-      .populate('sender', 'name email avatar')
-      .populate('receiver', 'name email')
-      .populate('replyTo', 'message sender')
+      .populate('senderFamilyMemberId', 'name email avatar')
+      .populate('receiverFamilyMemberId', 'name email avatar')
+      .populate({
+        path: 'replyTo',
+        select: 'message senderFamilyMemberId',
+        populate: {
+          path: 'senderFamilyMemberId',
+          select: 'name avatar'
+        }
+      })
       // Oldest first; UI scrolls to bottom so most recent is visible when opened
       .sort({ createdAt: 1 })
       .limit(100);
 
+    // Transform to match frontend expectations
+    const transformedChats = chats.map(chat => {
+      const chatObj = chat.toObject();
+      return {
+        ...chatObj,
+        sender: chatObj.senderFamilyMemberId,
+        receiver: chatObj.receiverFamilyMemberId,
+        replyTo: chatObj.replyTo ? {
+          ...chatObj.replyTo,
+          sender: chatObj.replyTo.senderFamilyMemberId
+        } : null
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: chats.length,
-      data: chats
+      count: transformedChats.length,
+      data: transformedChats
     });
   } catch (error) {
     next(error);
@@ -33,7 +53,7 @@ export const getChats = async (req, res, next) => {
 
 // @desc    Send a message
 // @route   POST /api/chat
-// @access  Private
+// @access  Private (Family members and admin)
 export const sendMessage = async (req, res, next) => {
   try {
     const { message, replyToId } = req.body;
@@ -45,20 +65,41 @@ export const sendMessage = async (req, res, next) => {
       });
     }
 
-    // Check if user is approved
-    if (req.user.status !== 'approved') {
+    // Get family member ID from session
+    const familyMemberId = req.session.familyMemberId;
+    const isAdmin = req.session.role === 'admin';
+    
+    if (!familyMemberId && !isAdmin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized'
+      });
+    }
+
+    // For admin, we'll use a special handling (or create a system admin family member)
+    // For now, let's restrict admin from sending - they can only view
+    if (isAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Only approved users can send messages'
+        message: 'Admin cannot send messages. Please use a family member account.'
+      });
+    }
+
+    // Verify family member exists
+    const familyMember = await FamilyMember.findById(familyMemberId);
+    if (!familyMember) {
+      return res.status(404).json({
+        success: false,
+        message: 'Family member not found'
       });
     }
 
     // Always create group chat messages
     const chatData = {
-      sender: req.user.id,
+      senderFamilyMemberId: familyMemberId,
       message: message.trim(),
       isGroupChat: true,
-      receiver: null
+      receiverFamilyMemberId: null
     };
 
     if (replyToId) {
@@ -73,15 +114,33 @@ export const sendMessage = async (req, res, next) => {
     }
 
     const chat = await Chat.create(chatData);
-    await chat.populate('sender', 'name email');
-    await chat.populate('receiver', 'name email');
+    await chat.populate('senderFamilyMemberId', 'name email avatar');
     if (chat.replyTo) {
-      await chat.populate('replyTo', 'message sender');
+      await chat.populate({
+        path: 'replyTo',
+        select: 'message senderFamilyMemberId',
+        populate: {
+          path: 'senderFamilyMemberId',
+          select: 'name avatar'
+        }
+      });
     }
+
+    // Transform to match frontend expectations
+    const chatObj = chat.toObject();
+    const transformedChat = {
+      ...chatObj,
+      sender: chatObj.senderFamilyMemberId,
+      receiver: chatObj.receiverFamilyMemberId,
+      replyTo: chatObj.replyTo ? {
+        ...chatObj.replyTo,
+        sender: chatObj.replyTo.senderFamilyMemberId
+      } : null
+    };
 
     res.status(201).json({
       success: true,
-      data: chat
+      data: transformedChat
     });
   } catch (error) {
     next(error);
@@ -90,10 +149,12 @@ export const sendMessage = async (req, res, next) => {
 
 // @desc    Delete a message
 // @route   DELETE /api/chat/:id
-// @access  Private
+// @access  Private (Family members can delete own, admin can delete any)
 export const deleteMessage = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const isAdmin = req.session?.role === 'admin';
+    const familyMemberId = req.session?.familyMemberId;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -111,16 +172,25 @@ export const deleteMessage = async (req, res, next) => {
       });
     }
 
-    // Only sender can delete their own message
-    if (chat.sender.toString() !== req.user.id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only delete your own messages'
-      });
+    // Admin can delete any message, members can only delete their own
+    if (!isAdmin) {
+      if (!familyMemberId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized'
+        });
+      }
+
+      if (chat.senderFamilyMemberId.toString() !== familyMemberId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only delete your own messages'
+        });
+      }
     }
 
-    chat.deletedAt = new Date();
-    await chat.save();
+    // Permanently delete the message
+    await Chat.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
@@ -131,22 +201,6 @@ export const deleteMessage = async (req, res, next) => {
   }
 };
 
-// @desc    Get all users for chat
-// @route   GET /api/chat/users
-// @access  Private
-export const getChatUsers = async (req, res, next) => {
-  try {
-    const users = await User.find({ status: 'approved' })
-      .select('name email')
-      .sort({ name: 1 });
-
-    res.status(200).json({
-      success: true,
-      data: users
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+// This endpoint is removed - we only have group chat now
 
 

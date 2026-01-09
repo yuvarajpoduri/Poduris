@@ -5,7 +5,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { FamilyView } from './pages/FamilyView';
 import { Calendar } from './pages/Calendar';
@@ -30,7 +29,6 @@ const AppRoutes: React.FC = () => {
     <>
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-        <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
         <Route
           path="/"
           element={

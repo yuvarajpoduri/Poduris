@@ -17,7 +17,21 @@ const formatDateOnly = (date) => {
 };
 export const getFamilyMembers = async (req, res, next) => {
   try {
-    const members = await FamilyMember.find().sort({ generation: 1, id: 1 });
+    const { search } = req.query;
+    let query = {};
+    
+    // If search query is provided, search by name or email
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query = {
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex }
+        ]
+      };
+    }
+    
+    const members = await FamilyMember.find(query).select('-password').sort({ generation: 1, id: 1 });
 
     res.status(200).json({
       success: true,
@@ -29,25 +43,15 @@ export const getFamilyMembers = async (req, res, next) => {
   }
 };
 
-// @desc    Get available (unlinked) family members for signup
+// @desc    Get available family members (all members with email)
 // @route   GET /api/family-members/available
-// @access  Public (for signup)
+// @access  Public (deprecated, kept for backward compatibility)
 export const getAvailableFamilyMembers = async (req, res, next) => {
   try {
-    const User = (await import("../models/User.js")).default;
-    // Get all users with linkedFamilyMemberId
-    const linkedUsers = await User.find({
-      linkedFamilyMemberId: { $ne: null },
-    }).select("linkedFamilyMemberId");
-
-    const linkedIds = linkedUsers
-      .map((u) => u.linkedFamilyMemberId)
-      .filter((id) => id !== null && id !== undefined);
-
-    // Get all family members not linked to any user
+    // Return all family members (no longer filtering by linked status)
     const availableMembers = await FamilyMember.find({
-      id: { $nin: linkedIds },
-    }).sort({ generation: 1, id: 1 });
+      email: { $exists: true, $ne: null }
+    }).select('-password').sort({ generation: 1, id: 1 });
 
     res.status(200).json({
       success: true,
@@ -195,7 +199,9 @@ export const getDashboardStats = async (req, res, next) => {
 
       processedPairs.add(pairKey);
 
-      const ref = new Date(member.birthDate);
+      // Use anniversaryDate if it exists, otherwise use birthDate as fallback
+      const anniversaryRef = member.anniversaryDate || member.birthDate;
+      const ref = new Date(anniversaryRef);
       const nextAnniversary = new Date(
         today.getFullYear(),
         ref.getMonth(),
@@ -315,10 +321,12 @@ export const createFamilyMember = async (req, res, next) => {
 
 // @desc    Update family member
 // @route   PUT /api/family-members/:id
-// @access  Private/Admin
+// @access  Private (Admin can edit any, members can edit only their own)
 export const updateFamilyMember = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const isAdmin = req.session?.role === 'admin';
+    const currentFamilyMemberId = req.session?.familyMemberId;
 
     let member;
     if (mongoose.Types.ObjectId.isValid(id)) {
@@ -341,9 +349,46 @@ export const updateFamilyMember = async (req, res, next) => {
       });
     }
 
-    // Check for duplicate ID if ID is being changed
-    if (req.body.id && req.body.id !== member.id) {
-      const existingMember = await FamilyMember.findOne({ id: req.body.id });
+    // Check permissions: Admin can edit any, members can only edit their own
+    if (!isAdmin) {
+      if (member._id.toString() !== currentFamilyMemberId) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only edit your own profile",
+        });
+      }
+    }
+
+    // For non-admin users, restrict which fields can be updated
+    const updateData = { ...req.body };
+    if (!isAdmin) {
+      // Members can only update: name, email, password, avatar, bio, location, occupation, anniversaryDate
+      // They cannot update: id, birthDate, deathDate, gender, parentId, spouseId, generation
+      const allowedFields = ['name', 'email', 'password', 'avatar', 'bio', 'location', 'occupation', 'anniversaryDate'];
+      Object.keys(updateData).forEach(key => {
+        if (!allowedFields.includes(key)) {
+          delete updateData[key];
+        }
+      });
+    }
+
+    // Check for duplicate email if email is being changed
+    if (updateData.email && updateData.email !== member.email) {
+      const existingMember = await FamilyMember.findOne({ 
+        email: updateData.email.toLowerCase(),
+        _id: { $ne: member._id }
+      });
+      if (existingMember) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
+    }
+
+    // Check for duplicate ID if ID is being changed (admin only)
+    if (updateData.id && updateData.id !== member.id && isAdmin) {
+      const existingMember = await FamilyMember.findOne({ id: updateData.id });
       if (existingMember) {
         return res.status(400).json({
           success: false,
@@ -352,9 +397,9 @@ export const updateFamilyMember = async (req, res, next) => {
       }
     }
 
-    // Validate parentId if provided
-    if (req.body.parentId !== undefined && req.body.parentId !== null) {
-      const parent = await FamilyMember.findOne({ id: req.body.parentId });
+    // Validate parentId if provided (admin only)
+    if (updateData.parentId !== undefined && updateData.parentId !== null && isAdmin) {
+      const parent = await FamilyMember.findOne({ id: updateData.parentId });
       if (!parent) {
         return res.status(400).json({
           success: false,
@@ -363,9 +408,9 @@ export const updateFamilyMember = async (req, res, next) => {
       }
     }
 
-    // Validate spouseId if provided
-    if (req.body.spouseId !== undefined && req.body.spouseId !== null) {
-      const spouse = await FamilyMember.findOne({ id: req.body.spouseId });
+    // Validate spouseId if provided (admin only)
+    if (updateData.spouseId !== undefined && updateData.spouseId !== null && isAdmin) {
+      const spouse = await FamilyMember.findOne({ id: updateData.spouseId });
       if (!spouse) {
         return res.status(400).json({
           success: false,
@@ -374,11 +419,12 @@ export const updateFamilyMember = async (req, res, next) => {
       }
     }
 
+    // If password is being updated, it will be hashed by the pre-save hook
     const updatedMember = await FamilyMember.findByIdAndUpdate(
       member._id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).select('-password');
 
     res.status(200).json({
       success: true,

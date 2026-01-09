@@ -2,24 +2,16 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'family_member';
-  status?: 'pending' | 'approved' | 'rejected';
+  role: 'admin' | 'member';
   avatar?: string;
   bio?: string;
   location?: string;
   occupation?: string;
-  linkedFamilyMemberId?: number | null;
-  linkedFamilyMember?: {
-    id: number;
-    name: string;
-    avatar: string;
-    generation: number;
-    birthDate?: string;
-    gender?: 'male' | 'female' | 'other';
-    occupation?: string;
-    location?: string;
-    bio?: string;
-  } | null;
+  familyMemberId?: number;
+  birthDate?: string;
+  anniversaryDate?: string | null;
+  gender?: 'male' | 'female' | 'other';
+  generation?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -28,7 +20,9 @@ export interface FamilyMember {
   _id: string;
   id: number;
   name: string;
+  email?: string;
   birthDate: string;
+  anniversaryDate?: string | null;
   deathDate: string | null;
   gender: 'male' | 'female' | 'other';
   parentId: number | null;

@@ -1,15 +1,17 @@
 import mongoose from 'mongoose';
 
 const chatSchema = new mongoose.Schema({
-  sender: {
+  senderFamilyMemberId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'FamilyMember',
+    required: true,
+    index: true
   },
-  receiver: {
+  receiverFamilyMemberId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null // null for group chat
+    ref: 'FamilyMember',
+    default: null, // null for group chat
+    index: true
   },
   message: {
     type: String,
@@ -23,11 +25,7 @@ const chatSchema = new mongoose.Schema({
   },
   isGroupChat: {
     type: Boolean,
-    default: false
-  },
-  deletedAt: {
-    type: Date,
-    default: null
+    default: true // Default to group chat
   },
   expiresAt: {
     type: Date,
@@ -39,6 +37,10 @@ const chatSchema = new mongoose.Schema({
 
 // TTL index to auto-delete messages after 7 days
 chatSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Index for efficient queries
+chatSchema.index({ isGroupChat: 1, createdAt: -1 });
+chatSchema.index({ senderFamilyMemberId: 1, createdAt: -1 });
 
 export default mongoose.model('Chat', chatSchema);
 

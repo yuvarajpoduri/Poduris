@@ -20,7 +20,7 @@ router.get("/:id", protect, getFamilyMember);
 router.get("/", protect, getFamilyMembers);
 
 router.post("/", protect, authorize("admin"), createFamilyMember);
-router.put("/:id", protect, authorize("admin"), updateFamilyMember);
+router.put("/:id", protect, updateFamilyMember); // Members can update their own, admin can update any
 router.delete("/:id", protect, authorize("admin"), deleteFamilyMember);
 
 export default router;

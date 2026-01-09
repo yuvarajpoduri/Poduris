@@ -12,6 +12,7 @@ export const AdminFamilyMembers: React.FC = () => {
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<Partial<FamilyMember>>({
     id: 0,
     name: '',
@@ -24,22 +25,30 @@ export const AdminFamilyMembers: React.FC = () => {
     avatar: '',
     occupation: '',
     location: '',
-    bio: ''
+    bio: '',
+    email: '',
+    anniversaryDate: null
   });
 
   useEffect(() => {
     fetchMembers();
   }, []);
 
-  const fetchMembers = async () => {
+  const fetchMembers = async (search?: string) => {
     try {
-      const data = await familyMembersAPI.getAll();
+      const data = await familyMembersAPI.getAll(search);
       setMembers(data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load family members');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    fetchMembers(searchQuery);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +75,9 @@ export const AdminFamilyMembers: React.FC = () => {
         avatar: '',
         occupation: '',
         location: '',
-        bio: ''
+        bio: '',
+        email: '',
+        anniversaryDate: null
       });
       fetchMembers();
     } catch (err: any) {
@@ -88,7 +99,9 @@ export const AdminFamilyMembers: React.FC = () => {
       avatar: member.avatar,
       occupation: member.occupation,
       location: member.location,
-      bio: member.bio
+      bio: member.bio,
+      email: (member as any).email || '',
+      anniversaryDate: (member as any).anniversaryDate || null
     });
     setIsModalOpen(true);
   };
@@ -139,7 +152,9 @@ export const AdminFamilyMembers: React.FC = () => {
               avatar: '',
               occupation: '',
               location: '',
-              bio: ''
+              bio: '',
+              email: '',
+              anniversaryDate: null
             });
             setIsModalOpen(true);
           }}
@@ -148,6 +163,32 @@ export const AdminFamilyMembers: React.FC = () => {
           + Add Member
         </button>
       </div>
+
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name or email..."
+          className="input flex-1"
+        />
+        <button type="submit" className="btn-primary">
+          Search
+        </button>
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setLoading(true);
+              fetchMembers();
+            }}
+            className="btn-secondary"
+          >
+            Clear
+          </button>
+        )}
+      </form>
 
       {error && (
         <div className="card bg-red-50 border-red-200">
@@ -229,6 +270,16 @@ export const AdminFamilyMembers: React.FC = () => {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">Email</label>
+            <input
+              type="email"
+              value={formData.email || ''}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="input"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-black dark:text-white mb-1">Birth Date (YYYY-MM-DD)</label>
@@ -249,6 +300,16 @@ export const AdminFamilyMembers: React.FC = () => {
                 className="input"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">Anniversary Date (YYYY-MM-DD)</label>
+            <input
+              type="date"
+              value={formData.anniversaryDate || ''}
+              onChange={(e) => setFormData({ ...formData, anniversaryDate: e.target.value || null })}
+              className="input"
+            />
           </div>
 
           <div>

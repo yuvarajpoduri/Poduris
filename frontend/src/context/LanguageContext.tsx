@@ -5,7 +5,7 @@ type Language = 'en' | 'te';
 interface LanguageContextType {
   language: Language;
   toggleLanguage: () => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const translations: Record<Language, Record<string, string>> = {
@@ -64,18 +64,47 @@ const translations: Record<Language, Record<string, string>> = {
     'users.familyMember': 'Family Member',
     'users.admin': 'Admin',
     
+    // Admin
+    'admin.title': 'Admin Panel',
+    'admin.familyMembers': 'Family Members',
+    'admin.announcements': 'Announcements',
+    'admin.gallery': 'Gallery',
+    'admin.addMember': 'Add Member',
+    'admin.editMember': 'Edit Family Member',
+    'admin.deleteConfirm': 'Are you sure you want to delete this?',
+    'admin.searchPlaceholder': 'Search by name or email...',
+    
     // Dashboard
     'dashboard.title': 'Dashboard',
-    'dashboard.welcome': 'Welcome',
+    'dashboard.welcome': 'Welcome to your family hub',
+    'dashboard.familyMembers': 'Family Members',
+    'dashboard.generations': 'Generations',
+    'dashboard.upcomingBirthdays': 'Upcoming Birthdays',
+    'dashboard.upcomingAnniversaries': 'Upcoming Anniversaries',
+    'dashboard.noUpcomingBirthdays': 'No upcoming birthdays',
+    'dashboard.noUpcomingAnniversaries': 'No upcoming anniversaries',
+    'dashboard.days': 'days',
+    'dashboard.todayBirthday': '🎉 Today is {name}\'s Birthday',
+    'dashboard.turningAge': 'Turning {age} years old today!',
+    'dashboard.birthdayWish': 'Wishing you a joyful year ahead!',
+    'dashboard.todayAnniversary': '💛 Today is {name1} & {name2}\'s Anniversary',
+    'dashboard.completedYears': '{years} years completed together',
+    'dashboard.anniversaryWish': 'Congratulations on your special day!',
     
     // Calendar
     'calendar.title': 'Calendar',
+    'calendar.noEvents': 'No events for this month',
+    'calendar.birthday': 'Birthday',
+    'calendar.anniversary': 'Anniversary',
     
     // Announcements
     'announcements.title': 'Announcements',
+    'announcements.noAnnouncements': 'No announcements yet',
+    'announcements.create': 'Create Announcement',
     
     // Family
     'family.title': 'Family Tree',
+    'family.noMembers': 'No family members found',
 
     // Chat
     'chat.title': 'Family Group Chat',
@@ -84,6 +113,12 @@ const translations: Record<Language, Record<string, string>> = {
     'chat.placeholder': 'Type a message...',
     'chat.replyingTo': 'Replying to',
     'chat.deleteConfirm': 'Are you sure you want to delete this message?',
+    'chat.viewProfile': 'View profile',
+    'chat.profile.generation': 'Generation',
+    'chat.profile.location': 'Location',
+    'chat.profile.birthday': 'Birthday',
+    'chat.profile.anniversary': 'Anniversary',
+    'chat.adminCannotSend': 'Admin accounts cannot send messages. Please use a family member account.',
 
     // Profile
     'profile.title': 'Profile',
@@ -96,6 +131,11 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.save': 'Save Profile',
     'profile.onlyApproved': 'Only approved users can edit their profile.',
     'profile.saved': 'Profile updated successfully.',
+    'profile.email': 'Email',
+    'profile.password': 'Password (leave blank to keep current)',
+    'profile.birthDate': 'Birth Date',
+    'profile.anniversaryDate': 'Anniversary Date',
+    'profile.gender': 'Gender',
   },
   te: {
     // Navigation
@@ -152,18 +192,47 @@ const translations: Record<Language, Record<string, string>> = {
     'users.familyMember': 'కుటుంబ సభ్యుడు',
     'users.admin': 'అడ్మిన్',
     
+    // Admin
+    'admin.title': 'అడ్మిన్ ప్యానెల్',
+    'admin.familyMembers': 'కుటుంబ సభ్యులు',
+    'admin.announcements': 'ప్రకటనలు',
+    'admin.gallery': 'గ్యాలరీ',
+    'admin.addMember': 'సభ్యుడిని జోడించు',
+    'admin.editMember': 'కుటుంబ సభ్యుడిని సవరించు',
+    'admin.deleteConfirm': 'దీన్ని నిజంగా తొలగించాలనా?',
+    'admin.searchPlaceholder': 'పేరు లేదా ఇమెయిల్ ద్వారా శోధించు...',
+    
     // Dashboard
     'dashboard.title': 'డాష్బోర్డ్',
-    'dashboard.welcome': 'స్వాగతం',
+    'dashboard.welcome': 'మీ కుటుంబ కేంద్రానికి స్వాగతం',
+    'dashboard.familyMembers': 'కుటుంబ సభ్యులు',
+    'dashboard.generations': 'తరాలు',
+    'dashboard.upcomingBirthdays': 'రాబోయే పుట్టినరోజులు',
+    'dashboard.upcomingAnniversaries': 'రాబోయే వైవాహిక వార్షికోత్సవాలు',
+    'dashboard.noUpcomingBirthdays': 'రాబోయే పుట్టినరోజులు లేవు',
+    'dashboard.noUpcomingAnniversaries': 'రాబోయే వైవాహిక వార్షికోత్సవాలు లేవు',
+    'dashboard.days': 'రోజులు',
+    'dashboard.todayBirthday': '🎉 ఈరోజు {name} పుట్టినరోజు',
+    'dashboard.turningAge': 'ఈరోజు {age} సంవత్సరాలు పూర్తి చేసుకుంటున్నారు!',
+    'dashboard.birthdayWish': 'మీకు ఆనందంతో కూడిన సంవత్సరం కోరుతున్నాము!',
+    'dashboard.todayAnniversary': '💛 ఈరోజు {name1} & {name2} వైవాహిక వార్షికోత్సవం',
+    'dashboard.completedYears': '{years} సంవత్సరాలు కలిసి గడిపారు',
+    'dashboard.anniversaryWish': 'మీ ప్రత్యేక రోజుకు అభినందనలు!',
     
     // Calendar
     'calendar.title': 'క్యాలెండర్',
+    'calendar.noEvents': 'ఈ నెలకు సంఘటనలు లేవు',
+    'calendar.birthday': 'పుట్టినరోజు',
+    'calendar.anniversary': 'వైవాహిక వార్షికోత్సవం',
     
     // Announcements
     'announcements.title': 'ప్రకటనలు',
+    'announcements.noAnnouncements': 'ఇంకా ప్రకటనలు లేవు',
+    'announcements.create': 'ప్రకటన సృష్టించు',
     
     // Family
     'family.title': 'కుటుంబ వృక్షం',
+    'family.noMembers': 'కుటుంబ సభ్యులు కనుగొనబడలేదు',
 
     // Chat
     'chat.title': 'కుటుంబ గ్రూప్ చాట్',
@@ -172,6 +241,12 @@ const translations: Record<Language, Record<string, string>> = {
     'chat.placeholder': 'సందేశం టైప్ చేయండి...',
     'chat.replyingTo': 'సమాధానం ఇస్తున్నారు',
     'chat.deleteConfirm': 'ఈ సందేశాన్ని నిజంగా తొలగించాలనా?',
+    'chat.viewProfile': 'ప్రొఫైల్ చూడండి',
+    'chat.profile.generation': 'తరం',
+    'chat.profile.location': 'స్థలం',
+    'chat.profile.birthday': 'పుట్టినరోజు',
+    'chat.profile.anniversary': 'వైవాహిక వార్షికోత్సవం',
+    'chat.adminCannotSend': 'అడ్మిన్ ఖాతాలు సందేశాలు పంపలేవు. దయచేసి కుటుంబ సభ్య ఖాతాను ఉపయోగించండి.',
 
     // Profile
     'profile.title': 'ప్రొఫైల్',
@@ -184,6 +259,11 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.save': 'ప్రొఫైల్ సేవ్ చేయి',
     'profile.onlyApproved': 'ఆమోదించబడిన వినియోగదారులు మాత్రమే ప్రొఫైల్ సవరించగలరు.',
     'profile.saved': 'ప్రొఫైల్ విజయవంతంగా నవీకరించబడింది.',
+    'profile.email': 'ఇమెయిల్',
+    'profile.password': 'పాస్వర్డ్ (ప్రస్తుతాన్ని ఉంచడానికి ఖాళీగా వదిలివేయండి)',
+    'profile.birthDate': 'పుట్టిన తేదీ',
+    'profile.anniversaryDate': 'వైవాహిక వార్షికోత్సవ తేదీ',
+    'profile.gender': 'లింగం',
   }
 };
 
@@ -203,8 +283,14 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLanguage(prev => prev === 'en' ? 'te' : 'en');
   };
 
-  const t = (key: string): string => {
-    return translations[language][key] || key;
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    let translation = translations[language][key] || key;
+    if (params) {
+      Object.keys(params).forEach(param => {
+        translation = translation.replace(new RegExp(`\\{${param}\\}`, 'g'), String(params[param]));
+      });
+    }
+    return translation;
   };
 
   return (

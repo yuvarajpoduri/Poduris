@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { chatAPI } from "../utils/api";
-import type { ChatMessage } from "../types";
+import { chatAPI, familyMembersAPI } from "../utils/api";
+import type { ChatMessage, FamilyMember } from "../types";
 import {
   MessageCircle,
   X,
@@ -22,12 +22,16 @@ export const Chat: React.FC = () => {
   const [messageText, setMessageText] = useState("");
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && user?.status === "approved") {
+    if (isOpen && user) {
       fetchMessages(true);
+      const interval = setInterval(() => {
+        fetchMessages(false);
+      }, 3000);
+      return () => clearInterval(interval);
     }
   }, [isOpen, user]);
 
@@ -38,7 +42,7 @@ export const Chat: React.FC = () => {
   const fetchMessages = async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
-      const data = await chatAPI.getMessages(undefined, true);
+      const data = await chatAPI.getMessages();
       setMessages(data || []);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
@@ -62,11 +66,14 @@ export const Chat: React.FC = () => {
     setReplyingTo(null);
 
     try {
-      await chatAPI.sendMessage(tempText, undefined, tempReply?._id, true);
+      await chatAPI.sendMessage(tempText, tempReply?._id);
       await fetchMessages(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send message:", error);
       setMessageText(tempText);
+      if (error.response?.data?.message) {
+        alert(error.response.data.message);
+      }
     }
   };
 
@@ -82,245 +89,361 @@ export const Chat: React.FC = () => {
     }
   };
 
-  if (user?.status !== "approved") {
+  if (!user) {
     return null;
   }
 
+  const canSendMessages = user.role === "member";
+
+  const chatVariants = {
+    hidden: { opacity: 0, scale: 0.8, y: 100, x: 0, originX: 1, originY: 1 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: { type: "spring", stiffness: 300, damping: 25, mass: 0.8 },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.5,
+      y: 100,
+      transition: { duration: 0.25, ease: "easeIn" },
+    },
+  };
+
+  const mobileVariants = {
+    hidden: { y: "100%" },
+    visible: {
+      y: 0,
+      transition: { type: "spring", damping: 30, stiffness: 300 },
+    },
+    exit: { y: "100%", transition: { duration: 0.3, ease: "easeInOut" } },
+  };
+
   return (
     <>
+      {" "}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-4 md:bottom-24 lg:bottom-8 z-50 bg-accent-blue text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        className="fixed bottom-6 right-6 z-40 bg-accent-blue text-white p-4 rounded-full shadow-2xl transition-shadow flex items-center justify-center"
+        style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: isOpen ? 0 : 1, scale: isOpen ? 0 : 1 }}
-        transition={{ duration: 0.2 }}
+        aria-label="Open chat"
       >
-        <MessageCircle className="w-6 h-6" />
+        {" "}
+        <MessageCircle className="w-6 h-6" />{" "}
       </motion.button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, x: 400 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 400 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-24 right-2 sm:right-4 md:bottom-24 lg:bottom-8 z-50 w-[calc(100%-1rem)] sm:w-full sm:max-w-md h-[70vh] sm:h-[65vh] lg:h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col border-2 border-gray-200 dark:border-gray-700 overflow-hidden"
+            variants={window.innerWidth < 768 ? mobileVariants : chatVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 md:inset-auto md:bottom-24 md:right-6 md:w-[400px] md:h-[600px] md:rounded-3xl md:shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:border md:border-gray-200 md:dark:border-gray-700 overflow-hidden"
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-accent-blue rounded-t-2xl">
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="w-5 h-5 text-white" />
-                <h3 className="font-semibold text-white text-sm sm:text-base">
-                  {t("chat.title")}
-                </h3>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-accent-blue/10 flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-accent-blue" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                    {t("chat.title") || "Family Chat"}
+                  </h3>
+                  <div className="flex items-center space-x-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                      Online
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                aria-label="Close chat"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50 relative scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/50 scroll-smooth">
               {loading ? (
-                <div className="flex justify-center items-center h-full text-gray-500 text-sm">
-                  <span className="animate-pulse">{t("chat.loading")}</span>
+                <div className="flex justify-center items-center h-full">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-accent-blue border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">
+                      {t("chat.loading")}
+                    </span>
+                  </div>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500 mt-10 text-sm">
-                  {t("chat.empty")}
+                <div className="flex flex-col items-center justify-center h-full opacity-40">
+                  <MessageCircle className="w-12 h-12 mb-2" />
+                  <p className="text-sm font-medium">{t("chat.empty")}</p>
                 </div>
               ) : (
-                messages.map((message) => {
+                messages.map((message, index) => {
                   const senderId =
-                    message.sender?._id || (message.sender as any)?.id;
+                    message.sender?._id || (message.sender as any)?._id;
                   const isOwnMessage = senderId === user?.id;
 
                   return (
-                    <div
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: index * 0.02 }}
                       key={message._id}
-                      className={`flex w-full gap-2 items-end ${
+                      className={`flex w-full gap-3 ${
                         isOwnMessage ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
                       <button
-                        onClick={() => setSelectedUser(message.sender)}
-                        className="flex-shrink-0 focus:outline-none transition-transform active:scale-95"
+                        onClick={async () => {
+                          if (message.sender?._id) {
+                            try {
+                              const member = await familyMembersAPI.getById(
+                                message.sender._id
+                              );
+                              setSelectedMember({ ...member });
+                            } catch (error) {
+                              setSelectedMember(message.sender);
+                            }
+                          }
+                        }}
+                        className="flex-shrink-0 active:scale-90 transition-transform"
                       >
                         {message.sender?.avatar ? (
                           <img
                             src={message.sender.avatar}
+                            className="w-9 h-9 rounded-2xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"
                             alt=""
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-accent-blue/50 bg-white"
                           />
                         ) : (
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent-blue/10 flex items-center justify-center text-xs sm:text-sm font-bold text-accent-blue border-2 border-accent-blue/50">
-                            {message.sender?.name
-                              ? message.sender.name.charAt(0).toUpperCase()
-                              : "?"}
+                          <div className="w-9 h-9 rounded-2xl bg-accent-blue text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                            {message.sender?.name?.charAt(0).toUpperCase() ||
+                              "?"}
                           </div>
                         )}
                       </button>
 
                       <div
-                        className={`flex flex-col max-w-[75%] ${
+                        className={`flex flex-col max-w-[80%] ${
                           isOwnMessage ? "items-end" : "items-start"
                         }`}
                       >
                         {!isOwnMessage && (
-                          <span className="text-[10px] text-gray-500 mb-1 ml-1">
+                          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1 ml-1">
                             {message.sender?.name}
                           </span>
                         )}
                         <div
-                          className={`rounded-2xl px-3 py-2 shadow-sm ${
+                          className={`relative group px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
                             isOwnMessage
-                              ? "bg-accent-blue text-white rounded-br-none"
-                              : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none border border-gray-100 dark:border-gray-600"
+                              ? "bg-accent-blue text-white rounded-tr-none"
+                              : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700"
                           }`}
                         >
                           {message.replyTo && (
                             <div
-                              className={`mb-2 p-2 rounded-lg border-l-4 text-[11px] ${
+                              className={`mb-2 p-2 rounded-lg border-l-2 text-[11px] opacity-80 ${
                                 isOwnMessage
-                                  ? "bg-white/20 border-white"
-                                  : "bg-gray-100 dark:bg-gray-600 border-accent-blue"
+                                  ? "bg-black/10 border-white"
+                                  : "bg-gray-100 dark:bg-gray-700 border-accent-blue"
                               }`}
                             >
                               <p className="font-bold truncate">
                                 {message.replyTo.sender?.name}
                               </p>
-                              <p className="italic truncate">
+                              <p className="truncate italic">
                                 {message.replyTo.message}
                               </p>
                             </div>
                           )}
-                          <p className="text-xs sm:text-sm leading-relaxed break-words">
+                          <p className="leading-relaxed whitespace-pre-wrap break-words">
                             {message.message}
                           </p>
-                          <div className="flex items-center justify-end mt-1 gap-2 opacity-60 text-[9px] sm:text-[10px]">
+                          <div
+                            className={`flex items-center gap-2 mt-1 opacity-50 text-[10px] ${
+                              isOwnMessage ? "justify-end" : "justify-start"
+                            }`}
+                          >
                             <span>
                               {message.createdAt
                                 ? format(new Date(message.createdAt), "HH:mm")
                                 : ""}
                             </span>
-                            {isOwnMessage ? (
-                              <button
-                                onClick={() => handleDeleteMessage(message._id)}
-                                className="hover:text-red-300"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => setReplyingTo(message)}
-                                className="hover:text-accent-blue"
-                              >
-                                <Reply className="w-3 h-3" />
-                              </button>
-                            )}
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {isOwnMessage || user.role === "admin" ? (
+                                <button
+                                  onClick={() =>
+                                    handleDeleteMessage(message._id)
+                                  }
+                                  className="hover:text-red-500"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              ) : null}
+                              {!isOwnMessage && canSendMessages && (
+                                <button
+                                  onClick={() => setReplyingTo(message)}
+                                  className="hover:text-accent-blue"
+                                >
+                                  <Reply className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
               <div ref={messagesEndRef} />
+            </div>
 
-              <AnimatePresence>
-                {selectedUser && (
+            <AnimatePresence>
+              {selectedMember && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSelectedMember(null)}
+                  className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+                >
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+                    initial={{ scale: 0.9, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.9, y: 20 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white dark:bg-gray-800 rounded-[32px] p-8 shadow-2xl w-full max-w-sm relative"
                   >
-                    <motion.div
-                      initial={{ scale: 0.9, y: 10 }}
-                      animate={{ scale: 1, y: 0 }}
-                      className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl w-full max-w-[260px] relative border border-gray-200 dark:border-gray-700"
+                    <button
+                      onClick={() => setSelectedMember(null)}
+                      className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <button
-                        onClick={() => setSelectedUser(null)}
-                        className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <X className="w-4 h-4 text-gray-400" />
-                      </button>
-                      <div className="flex flex-col items-center">
-                        {selectedUser.avatar ? (
+                      <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                    <div className="flex flex-col items-center">
+                      <div className="relative mb-6">
+                        {selectedMember.avatar ? (
                           <img
-                            src={selectedUser.avatar}
-                            className="w-20 h-20 rounded-full object-cover border-4 border-accent-blue/20 mb-3"
+                            src={selectedMember.avatar}
+                            className="w-28 h-28 rounded-[32px] object-cover shadow-xl ring-4 ring-accent-blue/10"
                             alt=""
                           />
                         ) : (
-                          <div className="w-20 h-20 rounded-full bg-accent-blue/5 flex items-center justify-center mb-3 border-2 border-accent-blue/10">
-                            <UserIcon className="w-10 h-10 text-accent-blue/40" />
+                          <div className="w-28 h-28 rounded-[32px] bg-accent-blue/10 flex items-center justify-center shadow-xl">
+                            <UserIcon className="w-12 h-12 text-accent-blue" />
                           </div>
                         )}
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                          {selectedUser.name}
-                        </h4>
-                        <p className="text-xs text-gray-500 mb-5 uppercase tracking-wider font-semibold">
-                          {selectedUser.role || "Member"}
-                        </p>
-                        <button
-                          onClick={() => setSelectedUser(null)}
-                          className="w-full py-2.5 bg-accent-blue text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-blue/30 active:scale-95 transition-transform"
-                        >
-                          {t("common.close")}
-                        </button>
+                        <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white dark:border-gray-800" />
                       </div>
-                    </motion.div>
+                      <h4 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
+                        {selectedMember.name}
+                      </h4>
+                      <p className="text-accent-blue text-sm font-bold uppercase tracking-widest mb-6">
+                        Family Member
+                      </p>
+
+                      <div className="w-full space-y-3">
+                        {selectedMember.location && (
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                            <span className="text-xs font-bold text-gray-400 uppercase">
+                              Location
+                            </span>
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {selectedMember.location}
+                            </span>
+                          </div>
+                        )}
+                        {selectedMember.birthDate && (
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                            <span className="text-xs font-bold text-gray-400 uppercase">
+                              Birthday
+                            </span>
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {format(
+                                new Date(selectedMember.birthDate),
+                                "MMM dd, yyyy"
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setSelectedMember(null)}
+                        className="w-full mt-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95"
+                      >
+                        {t("common.close")}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+              <AnimatePresence>
+                {replyingTo && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mb-3 flex items-center justify-between bg-accent-blue/5 dark:bg-accent-blue/10 p-3 rounded-xl border-l-4 border-accent-blue"
+                  >
+                    <div className="overflow-hidden">
+                      <p className="text-[10px] font-bold text-accent-blue uppercase tracking-tight">
+                        Replying to {replyingTo.sender?.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {replyingTo.message}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setReplyingTo(null)}
+                      className="p-1.5 hover:bg-accent-blue/10 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-accent-blue" />
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
 
-            {replyingTo && (
-              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <div className="flex-1 border-l-4 border-accent-blue pl-3 overflow-hidden">
-                  <p className="text-[10px] font-bold text-accent-blue truncate">
-                    {t("chat.replyingTo")} {replyingTo.sender?.name}
-                  </p>
-                  <p className="text-[11px] text-gray-400 truncate">
-                    {replyingTo.message}
+              {canSendMessages ? (
+                <form
+                  onSubmit={handleSendMessage}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder={t("chat.placeholder") || "Message..."}
+                    className="flex-1 px-5 py-3 bg-gray-100 dark:bg-gray-900 border-none rounded-2xl text-sm focus:ring-2 focus:ring-accent-blue/20 dark:text-white placeholder:text-gray-400 font-medium transition-all"
+                  />
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    type="submit"
+                    disabled={!messageText.trim()}
+                    className="p-3.5 bg-accent-blue text-white rounded-2xl shadow-lg shadow-accent-blue/30 disabled:opacity-40 disabled:shadow-none transition-all flex items-center justify-center"
+                  >
+                    <Send className="w-5 h-5" />
+                  </motion.button>
+                </form>
+              ) : (
+                <div className="py-2 text-center">
+                  <p className="text-[11px] font-bold text-yellow-600 dark:text-yellow-500 uppercase tracking-widest bg-yellow-50 dark:bg-yellow-900/20 py-2 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
+                    {t("chat.adminCannotSend")}
                   </p>
                 </div>
-                <button
-                  onClick={() => setReplyingTo(null)}
-                  className="ml-2 text-gray-400"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSendMessage}
-              className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700"
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  placeholder={t("chat.placeholder")}
-                  className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue dark:text-white"
-                />
-                <button
-                  type="submit"
-                  disabled={!messageText.trim()}
-                  className="p-3 bg-accent-blue text-white rounded-full hover:shadow-lg disabled:opacity-50 transition-all active:scale-90"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

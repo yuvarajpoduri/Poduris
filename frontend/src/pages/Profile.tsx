@@ -2,19 +2,20 @@ import React, { useState, useEffect } from "react";
 import { Layout } from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { usersAPI, uploadAPI, familyMembersAPI } from "../utils/api";
-import type { FamilyMember } from "../types";
+import { familyMembersAPI, uploadAPI } from "../utils/api";
 
 export const Profile: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
-  const [familyMember, setFamilyMember] = useState<FamilyMember | null>(null);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [avatar, setAvatar] = useState("");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [occupation, setOccupation] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [anniversaryDate, setAnniversaryDate] = useState<string | null>(null);
   const [gender, setGender] = useState<"male" | "female" | "other">("male");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,34 +23,40 @@ export const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user?.linkedFamilyMemberId) {
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        const member = await familyMembersAPI.getById(user.linkedFamilyMemberId);
-        setFamilyMember(member);
-        setName(member.name || "");
-        setAvatar(member.avatar || "");
-        setBio(member.bio || "");
-        setLocation(member.location || "");
-        setOccupation(member.occupation || "");
-        setBirthDate(member.birthDate || "");
-        setGender(member.gender || "male");
-      } catch (err: any) {
-        setError(err.response?.data?.message || "Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!user || user.role === 'admin') {
+      setLoading(false);
+      return;
+    }
     
-    loadProfile();
+    // Load profile data from user object
+    setName(user.name || "");
+    setEmail(user.email || "");
+    setAvatar(user.avatar || "");
+    setBio(user.bio || "");
+    setLocation(user.location || "");
+    setOccupation(user.occupation || "");
+    setBirthDate(user.birthDate || "");
+    setAnniversaryDate(user.anniversaryDate || null);
+    setGender(user.gender || "male");
+    setLoading(false);
   }, [user]);
 
   if (!user) {
     return null;
+  }
+  
+  if (user.role === 'admin') {
+    return (
+      <Layout>
+        <div className="space-y-6 max-w-2xl mx-auto">
+          <div className="card bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">
+            <p className="text-yellow-800 dark:text-yellow-300">
+              Admin accounts do not have profiles. Use the Admin panel to manage family members.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
   }
   
   if (loading) {
@@ -59,20 +66,6 @@ export const Profile: React.FC = () => {
           <div className="text-center">
             <div className="animate-pulse-soft text-4xl mb-4">⏳</div>
             <p className="text-gray-600">{t("common.loading")}</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  if (!user.linkedFamilyMemberId) {
-    return (
-      <Layout>
-        <div className="space-y-6 max-w-2xl mx-auto">
-          <div className="card bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">
-            <p className="text-yellow-800 dark:text-yellow-300">
-              Your account is not linked to a family member. Please contact an admin.
-            </p>
           </div>
         </div>
       </Layout>
@@ -99,26 +92,30 @@ export const Profile: React.FC = () => {
     setMessage(null);
 
     try {
-      const updatedMember = await usersAPI.updateMyProfile({
+      const updateData: any = {
         name,
+        email,
         avatar,
         bio,
         location,
         occupation,
         birthDate,
+        anniversaryDate,
         gender,
-      });
+      };
+      
+      // Only include password if it's provided
+      if (password && password.length >= 6) {
+        updateData.password = password;
+      }
+
+      const updatedMember = await familyMembersAPI.update(user.id, updateData);
       setMessage(t("profile.saved") || "Profile saved successfully");
-      // Update local state
-      setFamilyMember(updatedMember);
-      setName(updatedMember.name);
-      setAvatar(updatedMember.avatar || "");
-      setBio(updatedMember.bio || "");
-      setLocation(updatedMember.location || "");
-      setOccupation(updatedMember.occupation || "");
-      setBirthDate(updatedMember.birthDate || "");
-      setGender(updatedMember.gender || "male");
-      // Refresh user data from server after a delay
+      
+      // Clear password field
+      setPassword("");
+      
+      // Refresh user data from server
       setTimeout(async () => {
         try {
           const { authAPI } = await import('../utils/api');
@@ -136,8 +133,6 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const isEditable = user.status === "approved";
-
   return (
     <Layout>
       <div className="space-y-6 max-w-2xl mx-auto">
@@ -148,18 +143,9 @@ export const Profile: React.FC = () => {
           </p>
         </div>
 
-        {!isEditable && (
-          <div className="card bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">
-            <p className="text-yellow-800 dark:text-yellow-300 text-sm">
-              {t("profile.onlyApproved")}
-            </p>
-          </div>
-        )}
-
         <form
           onSubmit={handleSubmit}
           className="card space-y-4"
-          aria-disabled={!isEditable}
         >
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
@@ -194,7 +180,6 @@ export const Profile: React.FC = () => {
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarUpload}
-                disabled={!isEditable}
                 className="input"
               />
             </div>
@@ -208,9 +193,35 @@ export const Profile: React.FC = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={!isEditable}
               className="input"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="input"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">
+              Password (leave blank to keep current)
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input"
+              minLength={6}
+              placeholder="Enter new password (min 6 characters)"
             />
           </div>
 
@@ -223,27 +234,37 @@ export const Profile: React.FC = () => {
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                disabled={!isEditable}
                 className="input"
                 required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-black dark:text-white mb-1">
-                Gender
+                Anniversary Date
               </label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as "male" | "female" | "other")}
-                disabled={!isEditable}
+              <input
+                type="date"
+                value={anniversaryDate || ''}
+                onChange={(e) => setAnniversaryDate(e.target.value || null)}
                 className="input"
-                required
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">
+              Gender
+            </label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value as "male" | "female" | "other")}
+              className="input"
+              required
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
           </div>
 
           <div>
@@ -253,7 +274,6 @@ export const Profile: React.FC = () => {
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              disabled={!isEditable}
               rows={3}
               className="input"
             />
@@ -268,7 +288,6 @@ export const Profile: React.FC = () => {
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                disabled={!isEditable}
                 className="input"
               />
             </div>
@@ -280,16 +299,15 @@ export const Profile: React.FC = () => {
                 type="text"
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value)}
-                disabled={!isEditable}
                 className="input"
               />
             </div>
           </div>
           
-          {familyMember && (
+          {user.generation !== undefined && (
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Generation:</strong> {familyMember.generation} • <strong>Family ID:</strong> {familyMember.id}
+                <strong>Generation:</strong> {user.generation} • <strong>Family ID:</strong> {user.familyMemberId}
               </p>
             </div>
           )}
@@ -297,7 +315,7 @@ export const Profile: React.FC = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={!isEditable || saving}
+              disabled={saving}
               className="btn-primary"
             >
               {saving ? t("common.loading") : t("profile.save")}

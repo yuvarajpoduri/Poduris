@@ -1,27 +1,68 @@
 import React, { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
 import { Card } from "../components/Card";
-import { familyMembersAPI } from "../utils/api";
-import type { DashboardStats } from "../types";
+import { familyMembersAPI, calendarAPI } from "../utils/api";
+import type { DashboardStats, CalendarEvent } from "../types";
 import { format } from "date-fns";
-import { Users, GitBranch, Cake, Heart, Loader2 } from "lucide-react";
+import { Users, GitBranch, Cake, Heart, Loader2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLanguage } from "../context/LanguageContext";
 
 const parseDateOnly = (dateStr: string) => {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
+const calculateAge = (birthDate: string): number => {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const calculateAnniversaryYears = (anniversaryDate: string): number => {
+  const anniversary = new Date(anniversaryDate);
+  const today = new Date();
+  let years = today.getFullYear() - anniversary.getFullYear();
+  const monthDiff = today.getMonth() - anniversary.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < anniversary.getDate())) {
+    years--;
+  }
+  return Math.max(years, 0);
+};
+
 export const Dashboard: React.FC = () => {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const data = await familyMembersAPI.getDashboardStats();
-        setStats(data);
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const year = today.getFullYear();
+        
+        // Fetch dashboard stats and today's events in parallel
+        const [statsData, eventsData] = await Promise.all([
+          familyMembersAPI.getDashboardStats(),
+          calendarAPI.getEvents(month, year, true, true)
+        ]);
+        
+        setStats(statsData);
+        
+        // Filter events for today
+        const todayStr = format(today, "yyyy-MM-dd");
+        const todayEventsList = eventsData.filter(
+          (e) => format(new Date(e.date), "yyyy-MM-dd") === todayStr
+        );
+        setTodayEvents(todayEventsList);
       } catch (err: any) {
         setError(
           err.response?.data?.message || "Failed to load dashboard stats"
@@ -31,7 +72,7 @@ export const Dashboard: React.FC = () => {
       }
     };
 
-    fetchStats();
+    fetchData();
   }, []);
 
   if (loading) {
@@ -75,6 +116,9 @@ export const Dashboard: React.FC = () => {
     );
   }
 
+  const todayBirthdays = todayEvents.filter(e => e.type === 'birthday');
+  const todayAnniversaries = todayEvents.filter(e => e.type === 'anniversary');
+
   return (
     <Layout>
       <motion.div
@@ -84,11 +128,142 @@ export const Dashboard: React.FC = () => {
         className="space-y-6"
       >
         <div>
-          <h1 className="mb-2">Dashboard</h1>
+          <h1 className="mb-2">{t('dashboard.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Welcome to your family hub
+            {t('dashboard.welcome') || 'Welcome to your family hub'}
           </p>
         </div>
+
+        {/* Today's Special Events */}
+        {(todayBirthdays.length > 0 || todayAnniversaries.length > 0) && (
+          <div className="space-y-4">
+            {/* Birthday Cards */}
+            {todayBirthdays.map((event, index) => {
+              const age = event.birthDate ? calculateAge(event.birthDate) : 0;
+              return (
+                <motion.div
+                  key={`birthday-${index}`}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
+                  className="relative overflow-hidden"
+                >
+                  <Card className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/20 border-2 border-accent-orange shadow-lg">
+                    <motion.div
+                      animate={{
+                        boxShadow: [
+                          "0 0 20px rgba(249, 115, 22, 0.3)",
+                          "0 0 30px rgba(249, 115, 22, 0.5)",
+                          "0 0 20px rgba(249, 115, 22, 0.3)",
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 rounded-xl"
+                    />
+                    <div className="relative z-10 flex items-center gap-4 md:gap-6">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0],
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="flex-shrink-0"
+                      >
+                        {event.avatar ? (
+                          <img
+                            src={event.avatar}
+                            alt={event.memberName}
+                            className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent-orange/20 flex items-center justify-center text-2xl md:text-3xl font-bold text-accent-orange border-4 border-white dark:border-gray-800 shadow-lg">
+                            {event.memberName?.charAt(0).toUpperCase() || "?"}
+                          </div>
+                        )}
+                      </motion.div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sparkles className="w-5 h-5 text-accent-orange flex-shrink-0" />
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
+                            {t('dashboard.todayBirthday', { name: event.memberName || '' })}
+                          </h3>
+                        </div>
+                        <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 mb-1">
+                          {t('dashboard.turningAge', { age: age.toString() })}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 italic">
+                          {t('dashboard.birthdayWish')}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+
+            {/* Anniversary Cards */}
+            {todayAnniversaries.map((event, index) => {
+              const years = event.anniversaryDate ? calculateAnniversaryYears(event.anniversaryDate) : 0;
+              return (
+                <motion.div
+                  key={`anniversary-${index}`}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: (todayBirthdays.length + index) * 0.1, type: "spring", stiffness: 200 }}
+                  className="relative overflow-hidden"
+                >
+                  <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/20 border-2 border-accent-yellow shadow-lg">
+                    <motion.div
+                      animate={{
+                        boxShadow: [
+                          "0 0 20px rgba(234, 179, 8, 0.3)",
+                          "0 0 30px rgba(234, 179, 8, 0.5)",
+                          "0 0 20px rgba(234, 179, 8, 0.3)",
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 rounded-xl"
+                    />
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Heart className="w-5 h-5 text-accent-yellow flex-shrink-0" />
+                        <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
+                          {t('dashboard.todayAnniversary', { name1: event.member1Name || '', name2: event.member2Name || '' })}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className="flex -space-x-2">
+                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden bg-gray-200">
+                            {event.avatar ? (
+                              <img src={event.avatar} alt={event.member1Name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-600">
+                                {event.member1Name?.charAt(0).toUpperCase() || "?"}
+                              </div>
+                            )}
+                          </div>
+                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden bg-gray-200">
+                            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-600">
+                              {event.member2Name?.charAt(0).toUpperCase() || "?"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 mb-1 font-semibold">
+                            {t('dashboard.completedYears', { years: years.toString() })}
+                          </p>
+                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 italic">
+                            {t('dashboard.anniversaryWish')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <motion.div
@@ -102,7 +277,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Family Members
+                    {t('dashboard.familyMembers') || 'Family Members'}
                   </p>
                   <p className="text-3xl font-bold">{stats.totalMembers}</p>
                 </div>
@@ -121,7 +296,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Generations
+                    {t('dashboard.generations') || 'Generations'}
                   </p>
                   <p className="text-3xl font-bold">{stats.totalGenerations}</p>
                 </div>
@@ -134,7 +309,7 @@ export const Dashboard: React.FC = () => {
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Cake className="w-6 h-6 text-accent-orange" />
-              <h2 className="text-xl font-semibold">Upcoming Birthdays</h2>
+              <h2 className="text-xl font-semibold">{t('dashboard.upcomingBirthdays') || 'Upcoming Birthdays'}</h2>
             </div>
 
             {stats.upcomingBirthdays.length > 0 ? (
@@ -157,20 +332,20 @@ export const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     <span className="badge badge-orange">
-                      {member.daysUntil} days
+                      {member.daysUntil} {t('dashboard.days') || 'days'}
                     </span>
                   </motion.div>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500">No upcoming birthdays</p>
+              <p className="text-center text-gray-500">{t('dashboard.noUpcomingBirthdays') || 'No upcoming birthdays'}</p>
             )}
           </Card>
 
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Heart className="w-6 h-6 text-accent-yellow" />
-              <h2 className="text-xl font-semibold">Upcoming Anniversaries</h2>
+              <h2 className="text-xl font-semibold">{t('dashboard.upcomingAnniversaries') || 'Upcoming Anniversaries'}</h2>
             </div>
 
             {stats.upcomingAnniversaries.length > 0 ? (
@@ -195,14 +370,14 @@ export const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     <span className="badge badge-yellow">
-                      {a.daysUntil} days
+                      {a.daysUntil} {t('dashboard.days') || 'days'}
                     </span>
                   </motion.div>
                 ))}
               </div>
             ) : (
               <p className="text-center text-gray-500">
-                No upcoming anniversaries
+                {t('dashboard.noUpcomingAnniversaries') || 'No upcoming anniversaries'}
               </p>
             )}
           </Card>
