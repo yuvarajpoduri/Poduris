@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -21,9 +21,9 @@ export const Login: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/', { replace: true }); // replace: true prevents going back to login
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || t('auth.error') || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -41,11 +41,13 @@ export const Login: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Family Management</p>
         </div>
         
-        <div className="card">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center text-black dark:text-white mb-6">{t('auth.login')}</h2>
+        <div className="card shadow-xl border border-gray-100 dark:border-gray-800">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-black dark:text-white mb-6">
+            {t('auth.login')}
+          </h2>
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl">
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
@@ -56,13 +58,13 @@ export const Login: React.FC = () => {
                 </label>
                 <input
                   id="email"
-                  name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input"
-                  placeholder="you@example.com"
+                  className="input w-full"
+                  placeholder="name@family.com"
                 />
               </div>
               <div>
@@ -71,25 +73,23 @@ export const Login: React.FC = () => {
                 </label>
                 <input
                   id="password"
-                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input"
-                  placeholder="Enter your password"
+                  className="input w-full"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-              >
-                {loading ? t('common.loading') : t('auth.login')}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full py-3 text-lg font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {loading ? <span className="flex items-center justify-center gap-2">⏳ {t('common.loading')}</span> : t('auth.login')}
+            </button>
           </form>
         </div>
       </div>
