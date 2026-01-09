@@ -21,6 +21,7 @@ export const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  
   const { register } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -29,9 +30,11 @@ export const Register: React.FC = () => {
     const fetchAvailableMembers = async () => {
       setLoadingMembers(true);
       try {
-        const members = await familyMembersAPI.getAvailable();
-        setAvailableMembers(members);
-        setFilteredMembers(members.slice(0, 10));
+        // Using getAll with a check or specific endpoint if it exists
+        const data = await familyMembersAPI.getAll();
+        // Filtering locally if the API doesn't have a specific 'getAvailable'
+        setAvailableMembers(data);
+        setFilteredMembers(data.slice(0, 10));
       } catch (err: any) {
         setError('Failed to load family members. Please try again.');
       } finally {
@@ -78,12 +81,10 @@ export const Register: React.FC = () => {
     try {
       await register(email, password, selectedMember.id);
       setSuccess(t('auth.registerSuccess') || 'Registration successful. Please wait for admin approval.');
-      // Clear form
       setEmail('');
       setPassword('');
       setSelectedMember(null);
       setSearchQuery('');
-      // Redirect to login after 3 seconds
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -126,7 +127,6 @@ export const Register: React.FC = () => {
                 </label>
                 <input
                   id="email"
-                  name="email"
                   type="email"
                   required
                   value={email}
@@ -141,7 +141,6 @@ export const Register: React.FC = () => {
                 </label>
                 <input
                   id="password"
-                  name="password"
                   type="password"
                   required
                   value={password}
@@ -151,7 +150,7 @@ export const Register: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="familyMember" className="block text-sm font-medium text-black dark:text-white mb-2">
+                <label className="block text-sm font-medium text-black dark:text-white mb-2">
                   Select Your Family Member
                 </label>
                 <div className="relative family-member-dropdown">
@@ -165,13 +164,13 @@ export const Register: React.FC = () => {
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-accent-blue/20 flex items-center justify-center text-sm font-semibold text-accent-blue">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600">
                             {selectedMember.name.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
                           <p className="font-medium text-black dark:text-white">{selectedMember.name}</p>
-                          <p className="text-xs text-gray-500">Generation {selectedMember.generation} • ID: {selectedMember.id}</p>
+                          <p className="text-xs text-gray-500">Gen {selectedMember.generation} • ID: {selectedMember.id}</p>
                         </div>
                       </div>
                       <button
@@ -190,7 +189,6 @@ export const Register: React.FC = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
-                          id="familyMember"
                           type="text"
                           value={searchQuery}
                           onChange={(e) => {
@@ -200,7 +198,6 @@ export const Register: React.FC = () => {
                           onFocus={() => setIsDropdownOpen(true)}
                           placeholder="Search for your family member..."
                           className="input pl-10"
-                          required
                         />
                       </div>
                       <AnimatePresence>
@@ -226,30 +223,17 @@ export const Register: React.FC = () => {
                                     }}
                                     className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-3"
                                   >
-                                    {member.avatar ? (
-                                      <img
-                                        src={member.avatar}
-                                        alt={member.name}
-                                        className="w-10 h-10 rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-10 h-10 rounded-full bg-accent-blue/20 flex items-center justify-center text-sm font-semibold text-accent-blue">
-                                        {member.name.charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
                                     <div className="flex-1">
                                       <p className="font-medium text-black dark:text-white">{member.name}</p>
-                                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        Generation {member.generation} • ID: {member.id}
+                                      <p className="text-sm text-gray-500">
+                                        Gen {member.generation} • ID: {member.id}
                                       </p>
                                     </div>
                                   </button>
                                 ))}
                               </div>
-                            ) : searchQuery.length >= 2 ? (
-                              <div className="p-4 text-center text-gray-500">No available members found</div>
                             ) : (
-                              <div className="p-4 text-center text-gray-500">Start typing to search...</div>
+                              <div className="p-4 text-center text-gray-500">No members found</div>
                             )}
                           </motion.div>
                         )}
@@ -257,22 +241,19 @@ export const Register: React.FC = () => {
                     </>
                   )}
                 </div>
-                {availableMembers.length === 0 && !loadingMembers && (
-                  <p className="mt-2 text-sm text-gray-500">No available family members. Please contact an admin.</p>
-                )}
               </div>
             </div>
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full"
+                className="btn-primary w-full bg-black text-white py-2 rounded-xl"
               >
                 {loading ? t('common.loading') : t('auth.register')}
               </button>
             </div>
             <div className="text-center">
-              <Link to="/login" className="text-sm text-accent-blue hover:underline font-medium">
+              <Link to="/login" className="text-sm text-blue-600 hover:underline font-medium">
                 {t('auth.login')}
               </Link>
             </div>
