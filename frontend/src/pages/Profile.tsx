@@ -8,7 +8,6 @@ export const Profile: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   
-  // States
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,7 +21,6 @@ export const Profile: React.FC = () => {
     gender: "male" as "male" | "female" | "other"
   });
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{type: 'success' | 'error', msg: string} | null>(null);
 
@@ -41,7 +39,6 @@ export const Profile: React.FC = () => {
         gender: user.gender || "male",
       });
     }
-    setLoading(false);
   }, [user]);
 
   if (!user) return null;
@@ -83,11 +80,9 @@ export const Profile: React.FC = () => {
       await familyMembersAPI.update(user.id, updateData);
       setStatus({ type: 'success', msg: t("profile.saved") || "Profile updated!" });
       
-      // Update local storage and global state without a hard reload
       const updatedUser = await authAPI.getMe();
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      // We give the user 2 seconds to see the success message before clearing
       setTimeout(() => setStatus(null), 3000);
     } catch (err: any) {
       setStatus({ type: 'error', msg: err.response?.data?.message || "Update failed" });
