@@ -2,12 +2,15 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'family_member';
+  status: 'active' | 'inactive' | 'pending';
   avatar?: string;
   bio?: string;
   location?: string;
   occupation?: string;
   familyMemberId?: number;
+  linkedFamilyMemberId?: number;
+  linkedFamilyMember?: FamilyMember;
   birthDate?: string;
   anniversaryDate?: string | null;
   gender?: 'male' | 'female' | 'other';
@@ -69,7 +72,7 @@ export interface GalleryImage {
     email: string;
   };
   familyMemberId: number | null;
-  status?: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
 }
@@ -84,8 +87,8 @@ export interface CalendarEvent {
   member2Name?: string;
   avatar?: string;
   birthDate?: string;
+  anniversaryDate?: string;
 }
-
 
 export interface DashboardStats {
   totalMembers: number;
@@ -133,4 +136,3 @@ export interface ChatMessage {
   createdAt: string;
   updatedAt: string;
 }
-
