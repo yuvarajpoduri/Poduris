@@ -213,7 +213,8 @@ export const uploadAPI = {
   ): Promise<{ imageUrl: string; cloudinaryId: string }> => {
     const formData = new FormData();
     formData.append("image", file);
-    const response = await api.post
+    // FIXED: Added missing '<' before ApiResponse
+    const response = await api.post<
       ApiResponse<{ imageUrl: string; cloudinaryId: string }>
     >("/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
