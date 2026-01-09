@@ -7,142 +7,252 @@ import type {
   GalleryImage,
   CalendarEvent,
   DashboardStats,
+  ApiResponse,
   ChatMessage,
-  ApiResponse
 } from "../types";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://poduris-backend.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,
+  headers: { "Content-Type": "application/json" },
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json"
-  }
 });
 
-export const authAPI = {
-  login: async (email: string, password: string) => {
-    const res = await api.post<ApiResponse<User>>("/auth/login", { email, password });
-    return res.data.user;
-  },
-<<<<<<< HEAD
-  logout: async (): Promise<void> => {
-=======
-  register: async (email: string, password: string, linkedFamilyMemberId: number) => {
-    const res = await api.post<ApiResponse<User>>("/auth/register", {
-      email,
-      password,
-      linkedFamilyMemberId
-    });
-    return res.data.user;
-  },
-  logout: async () => {
->>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
-    await api.post("/auth/logout");
-  },
-  getMe: async () => {
-    const res = await api.get<ApiResponse<User>>("/auth/me");
-    return res.data.user;
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("user");
+    }
+    return Promise.reject(error);
   }
+);
+
+export const authAPI = {
+  login: async (email: string, password: string): Promise<{ user: User }> => {
+    const response = await api.post<{ success: boolean; user: User }>(
+      "/auth/login",
+      { email, password }
+    );
+    return { user: response.data.user };
+  },
+  logout: async (): Promise<void> => {
+    await api.post("/auth/logout");
+    localStorage.removeItem("user");
+  },
+  getMe: async (): Promise<User> => {
+    const response = await api.get<{ success: boolean; user: User }>(
+      "/auth/me"
+    );
+    return response.data.user;
+  },
 };
 
 export const familyMembersAPI = {
-<<<<<<< HEAD
   getAll: async (search?: string): Promise<FamilyMember[]> => {
     const params = search ? new URLSearchParams({ search }) : '';
     const response = await api.get<ApiResponse<FamilyMember[]>>(
       `/family-members${params ? `?${params}` : ''}`
     );
     return response.data.data || [];
-=======
-  getAll: async () => {
-    const res = await api.get<ApiResponse<FamilyMember[]>>("/family-members");
-    return res.data.data || [];
   },
-  getAvailable: async () => {
-    const res = await api.get<ApiResponse<FamilyMember[]>>("/family-members/available");
-    return res.data.data || [];
->>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
+  getById: async (id: string | number): Promise<FamilyMemberWithRelations> => {
+    const response = await api.get<ApiResponse<FamilyMemberWithRelations>>(
+      `/family-members/${id}`
+    );
+    return response.data.data!;
   },
-  getById: async (id: number | string) => {
-    const res = await api.get<ApiResponse<FamilyMemberWithRelations>>(`/family-members/${id}`);
-    return res.data.data!;
+  getByGeneration: async (generation: number): Promise<FamilyMember[]> => {
+    const response = await api.get<ApiResponse<FamilyMember[]>>(
+      `/family-members/generation/${generation}`
+    );
+    return response.data.data || [];
   },
-  getDashboardStats: async () => {
-    const res = await api.get<ApiResponse<DashboardStats>>("/family-members/stats/dashboard");
-    return res.data.data!;
-  }
+  getDashboardStats: async (): Promise<DashboardStats> => {
+    const response = await api.get<ApiResponse<DashboardStats>>(
+      "/family-members/stats/dashboard"
+    );
+    return response.data.data!;
+  },
+  create: async (member: Partial<FamilyMember>): Promise<FamilyMember> => {
+    const response = await api.post<ApiResponse<FamilyMember>>(
+      "/family-members",
+      member
+    );
+    return response.data.data!;
+  },
+  update: async (
+    id: string | number,
+    member: Partial<FamilyMember>
+  ): Promise<FamilyMember> => {
+    const response = await api.put<ApiResponse<FamilyMember>>(
+      `/family-members/${id}`,
+      member
+    );
+    return response.data.data!;
+  },
+  delete: async (id: string | number): Promise<void> => {
+    await api.delete(`/family-members/${id}`);
+  },
 };
 
 export const announcementsAPI = {
-  getAll: async () => {
-    const res = await api.get<ApiResponse<Announcement[]>>("/announcements");
-    return res.data.data || [];
+  getAll: async (): Promise<Announcement[]> => {
+    const response = await api.get<ApiResponse<Announcement[]>>(
+      "/announcements"
+    );
+    return response.data.data || [];
   },
-  create: async (data: Partial<Announcement>) => {
-    const res = await api.post<ApiResponse<Announcement>>("/announcements", data);
-    return res.data.data!;
-  }
+  getById: async (id: string): Promise<Announcement> => {
+    const response = await api.get<ApiResponse<Announcement>>(
+      `/announcements/${id}`
+    );
+    return response.data.data!;
+  },
+  create: async (
+    announcement: Partial<Announcement>
+  ): Promise<Announcement> => {
+    const response = await api.post<ApiResponse<Announcement>>(
+      "/announcements",
+      announcement
+    );
+    return response.data.data!;
+  },
+  update: async (
+    id: string,
+    announcement: Partial<Announcement>
+  ): Promise<Announcement> => {
+    const response = await api.put<ApiResponse<Announcement>>(
+      `/announcements/${id}`,
+      announcement
+    );
+    return response.data.data!;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/announcements/${id}`);
+  },
 };
 
 export const galleryAPI = {
-  getAll: async () => {
-    const res = await api.get<ApiResponse<GalleryImage[]>>("/gallery");
-    return res.data.data || [];
+  getAll: async (): Promise<GalleryImage[]> => {
+    const response = await api.get<ApiResponse<GalleryImage[]>>("/gallery");
+    return response.data.data || [];
   },
-  upload: async (data: Partial<GalleryImage>) => {
-    const res = await api.post<ApiResponse<GalleryImage>>("/gallery", data);
-    return res.data.data!;
+  getById: async (id: string): Promise<GalleryImage> => {
+    const response = await api.get<ApiResponse<GalleryImage>>(`/gallery/${id}`);
+    return response.data.data!;
   },
-  approve: async (id: string) => {
-    const res = await api.put<ApiResponse<GalleryImage>>(`/gallery/${id}/approve`);
-    return res.data.data!;
-  },
-  reject: async (id: string) => {
-    const res = await api.put<ApiResponse<GalleryImage>>(`/gallery/${id}/reject`);
-    return res.data.data!;
-  }
-};
-
-export const uploadAPI = {
-  uploadImage: async (file: File) => {
-    const formData = new FormData();
-    formData.append("image", file);
-    const res = await api.post<ApiResponse<{ imageUrl: string; cloudinaryId: string }>>(
-      "/upload",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+  upload: async (image: Partial<GalleryImage>): Promise<GalleryImage> => {
+    const response = await api.post<ApiResponse<GalleryImage>>(
+      "/gallery",
+      image
     );
-    return res.data.data!;
-  }
+    return response.data.data!;
+  },
+  update: async (
+    id: string,
+    image: Partial<GalleryImage>
+  ): Promise<GalleryImage> => {
+    const response = await api.put<ApiResponse<GalleryImage>>(
+      `/gallery/${id}`,
+      image
+    );
+    return response.data.data!;
+  },
+  approve: async (id: string): Promise<GalleryImage> => {
+    const response = await api.put<ApiResponse<GalleryImage>>(
+      `/gallery/${id}/approve`,
+      {}
+    );
+    return response.data.data!;
+  },
+  reject: async (id: string): Promise<GalleryImage> => {
+    const response = await api.put<ApiResponse<GalleryImage>>(
+      `/gallery/${id}/reject`,
+      {}
+    );
+    return response.data.data!;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/gallery/${id}`);
+  },
 };
 
 export const calendarAPI = {
-  getEvents: async (month?: number, year?: number) => {
+  getEvents: async (
+    month?: number,
+    year?: number,
+    includeBirthdays?: boolean,
+    includeAnniversaries?: boolean
+  ): Promise<CalendarEvent[]> => {
     const params = new URLSearchParams();
-    if (month) params.append("month", String(month));
-    if (year) params.append("year", String(year));
-    const res = await api.get<ApiResponse<CalendarEvent[]>>(
+    if (month) params.append("month", month.toString());
+    if (year) params.append("year", year.toString());
+    if (includeBirthdays !== undefined)
+      params.append("includeBirthdays", includeBirthdays.toString());
+    if (includeAnniversaries !== undefined)
+      params.append("includeAnniversaries", includeAnniversaries.toString());
+    const response = await api.get<ApiResponse<CalendarEvent[]>>(
       `/calendar/events?${params.toString()}`
     );
-    return res.data.data || [];
-  }
+    return response.data.data || [];
+  },
+};
+
+export const uploadAPI = {
+  uploadImage: async (
+    file: File
+  ): Promise<{ imageUrl: string; cloudinaryId: string }> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await api.post<
+      ApiResponse<{ imageUrl: string; cloudinaryId: string }>
+    >("/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data.data!;
+  },
 };
 
 export const usersAPI = {
-  getAll: async () => {
-    const res = await api.get<ApiResponse<User[]>>("/users");
-    return res.data.data || [];
+  getAll: async (): Promise<User[]> => {
+    const response = await api.get<ApiResponse<User[]>>("/users");
+    return response.data.data || [];
   },
-  approve: async (id: string, role?: string) => {
-    const res = await api.put<ApiResponse<User>>(`/users/${id}/approve`, { role });
-    return res.data.data!;
-  }
+  getById: async (id: string): Promise<User> => {
+    const response = await api.get<ApiResponse<User>>(`/users/${id}`);
+    return response.data.data!;
+  },
+  approve: async (
+    id: string,
+    role?: string,
+    linkedFamilyMemberId?: number
+  ): Promise<User> => {
+    const response = await api.put<ApiResponse<User>>(`/users/${id}/approve`, {
+      role,
+      linkedFamilyMemberId,
+    });
+    return response.data.data!;
+  },
+  reject: async (id: string): Promise<User> => {
+    const response = await api.put<ApiResponse<User>>(
+      `/users/${id}/reject`,
+      {}
+    );
+    return response.data.data!;
+  },
+  update: async (id: string, user: Partial<User>): Promise<User> => {
+    const response = await api.put<ApiResponse<User>>(`/users/${id}`, user);
+    return response.data.data!;
+  },
+  updateMyProfile: async (profile: Partial<FamilyMember>): Promise<FamilyMember> => {
+    const response = await api.put<ApiResponse<FamilyMember>>(`/users/me/profile`, profile);
+    return response.data.data!;
+  },
 };
 
 export const chatAPI = {
-<<<<<<< HEAD
   getMessages: async (): Promise<ChatMessage[]> => {
     const response = await api.get<ApiResponse<ChatMessage[]>>("/chat");
     return response.data.data || [];
@@ -159,16 +269,7 @@ export const chatAPI = {
   },
   deleteMessage: async (id: string): Promise<void> => {
     await api.delete(`/chat/${id}`);
-=======
-  getMessages: async () => {
-    const res = await api.get<ApiResponse<ChatMessage[]>>("/chat");
-    return res.data.data || [];
->>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
   },
-  sendMessage: async (message: string) => {
-    const res = await api.post<ApiResponse<ChatMessage>>("/chat", { message });
-    return res.data.data!;
-  }
 };
 
 export default api;
