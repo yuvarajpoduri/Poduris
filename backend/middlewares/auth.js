@@ -1,15 +1,24 @@
+<<<<<<< HEAD
 import FamilyMember from '../models/FamilyMember.js';
 
 export const protect = async (req, res, next) => {
   try {
     // Check if user is in session
     if (!req.session || !req.session.familyMemberId || !req.session.role) {
+=======
+import User from "../models/User.js";
+
+export const protect = async (req, res, next) => {
+  try {
+    if (!req.session || !req.session.user) {
+>>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: "Not authorized to access this route",
       });
     }
 
+<<<<<<< HEAD
     // Handle admin
     if (req.session.role === 'admin') {
       req.familyMember = {
@@ -34,6 +43,15 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Family member not found'
+=======
+    const user = await User.findById(req.session.user.id).select("-password");
+
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+>>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
       });
     }
 
@@ -43,8 +61,7 @@ export const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Authentication error',
-      error: error.message
+      message: "Authentication error",
     });
   }
 };
@@ -54,7 +71,7 @@ export const authorize = (...roles) => {
     if (!req.familyMember && !req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized'
+        message: "Not authorized",
       });
     }
 
@@ -67,7 +84,11 @@ export const authorize = (...roles) => {
     if (!mappedRoles.includes(userRole) && !roles.includes(mappedRole)) {
       return res.status(403).json({
         success: false,
+<<<<<<< HEAD
         message: `User role '${userRole}' is not authorized to access this route`
+=======
+        message: "Forbidden",
+>>>>>>> 3c8a2a087cf8d1de97ed55022004c88257f07561
       });
     }
 

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "../Card";
 import { Modal } from "../Modal";
-import { usersAPI, familyMembersAPI } from "../../utils/api";
-import type { User, FamilyMember } from "../../types";
+import { usersAPI } from "../../utils/api";
+import type { User } from "../../types";
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +17,6 @@ export const AdminUsers: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-    fetchFamilyMembers();
   }, []);
 
   const fetchUsers = async () => {
@@ -29,15 +27,6 @@ export const AdminUsers: React.FC = () => {
       setError(err.response?.data?.message || "Failed to load users");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchFamilyMembers = async () => {
-    try {
-      const data = await familyMembersAPI.getAll();
-      setFamilyMembers(data);
-    } catch (err: any) {
-      // Ignore errors for family members
     }
   };
 
@@ -54,7 +43,6 @@ export const AdminUsers: React.FC = () => {
     e.preventDefault();
     if (!selectedUser) return;
 
-    // Safety: ensure we use the correct ID field
     const userId = selectedUser.id || (selectedUser as any)._id;
 
     if (!userId) {
@@ -366,7 +354,6 @@ export const AdminUsers: React.FC = () => {
               <option value="admin">Admin</option>
             </select>
           </div>
-
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
