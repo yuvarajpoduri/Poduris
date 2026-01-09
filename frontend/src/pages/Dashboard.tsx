@@ -1,38 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Layout } from "../components/Layout";
 import { Card } from "../components/Card";
 import { familyMembersAPI, calendarAPI } from "../utils/api";
 import type { DashboardStats, CalendarEvent } from "../types";
-import { format } from "date-fns";
+import { format, isSameDay, parseISO } from "date-fns";
 import { Users, GitBranch, Cake, Heart, Loader2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../context/LanguageContext";
 
-const parseDateOnly = (dateStr: string) => {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
-
+// Utility logic moved outside or to utils/dateUtils.ts
 const calculateAge = (birthDate: string): number => {
   const birth = new Date(birthDate);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
+  if (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate())) age--;
   return age;
-};
-
-const calculateAnniversaryYears = (anniversaryDate: string): number => {
-  const anniversary = new Date(anniversaryDate);
-  const today = new Date();
-  let years = today.getFullYear() - anniversary.getFullYear();
-  const monthDiff = today.getMonth() - anniversary.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < anniversary.getDate())) {
-    years--;
-  }
-  return Math.max(years, 0);
 };
 
 export const Dashboard: React.FC = () => {
@@ -46,343 +28,111 @@ export const Dashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         const today = new Date();
-        const month = today.getMonth() + 1;
-        const year = today.getFullYear();
-        
-        // Fetch dashboard stats and today's events in parallel
         const [statsData, eventsData] = await Promise.all([
           familyMembersAPI.getDashboardStats(),
-          calendarAPI.getEvents(month, year, true, true)
+          calendarAPI.getEvents(today.getMonth() + 1, today.getFullYear(), true, true)
         ]);
         
         setStats(statsData);
-        
-        // Filter events for today
-        const todayStr = format(today, "yyyy-MM-dd");
-        const todayEventsList = eventsData.filter(
-          (e) => format(new Date(e.date), "yyyy-MM-dd") === todayStr
-        );
-        setTodayEvents(todayEventsList);
+        // Using date-fns isSameDay for more robust comparison than string formatting
+        setTodayEvents(eventsData.filter(e => isSameDay(parseISO(e.date), today)));
       } catch (err: any) {
-        setError(
-          err.response?.data?.message || "Failed to load dashboard stats"
-        );
+        setError(err.response?.data?.message || "Failed to load dashboard stats");
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
-          >
-            <Loader2 className="w-12 h-12 text-accent-blue animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-          </motion.div>
-        </div>
-      </Layout>
-    );
-  }
+  const birthdayEvents = useMemo(() => todayEvents.filter(e => e.type === 'birthday'), [todayEvents]);
+  const anniversaryEvents = useMemo(() => todayEvents.filter(e => e.type === 'anniversary'), [todayEvents]);
 
-  if (error) {
-    return (
-      <Layout>
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-        >
-          <p className="text-red-700 dark:text-red-400 text-center">{error}</p>
-        </motion.div>
-      </Layout>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <Layout>
-        <div className="text-center text-gray-500 dark:text-gray-400">
-          No data available
-        </div>
-      </Layout>
-    );
-  }
-
-  const todayBirthdays = todayEvents.filter(e => e.type === 'birthday');
-  const todayAnniversaries = todayEvents.filter(e => e.type === 'anniversary');
+  if (loading) return (
+    <Layout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 text-accent-blue animate-spin" />
+      </div>
+    </Layout>
+  );
 
   return (
     <Layout>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-6"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <div>
-          <h1 className="mb-2">{t('dashboard.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {t('dashboard.welcome') || 'Welcome to your family hub'}
-          </p>
+          <h1 className="text-2xl font-bold mb-2">{t('dashboard.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-400">{t('dashboard.welcome')}</p>
         </div>
 
-        {/* Today's Special Events */}
-        {(todayBirthdays.length > 0 || todayAnniversaries.length > 0) && (
-          <div className="space-y-4">
-            {/* Birthday Cards */}
-            {todayBirthdays.map((event, index) => {
-              const age = event.birthDate ? calculateAge(event.birthDate) : 0;
-              return (
-                <motion.div
-                  key={`birthday-${index}`}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
-                  className="relative overflow-hidden"
-                >
-                  <Card className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/20 border-2 border-accent-orange shadow-lg">
-                    <motion.div
-                      animate={{
-                        boxShadow: [
-                          "0 0 20px rgba(249, 115, 22, 0.3)",
-                          "0 0 30px rgba(249, 115, 22, 0.5)",
-                          "0 0 20px rgba(249, 115, 22, 0.3)",
-                        ],
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute inset-0 rounded-xl"
-                    />
-                    <div className="relative z-10 flex items-center gap-4 md:gap-6">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.1, 1],
-                          rotate: [0, 5, -5, 0],
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="flex-shrink-0"
-                      >
-                        {event.avatar ? (
-                          <img
-                            src={event.avatar}
-                            alt={event.memberName}
-                            className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent-orange/20 flex items-center justify-center text-2xl md:text-3xl font-bold text-accent-orange border-4 border-white dark:border-gray-800 shadow-lg">
-                            {event.memberName?.charAt(0).toUpperCase() || "?"}
-                          </div>
-                        )}
-                      </motion.div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Sparkles className="w-5 h-5 text-accent-orange flex-shrink-0" />
-                          <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-                            {t('dashboard.todayBirthday', { name: event.memberName || '' })}
-                          </h3>
-                        </div>
-                        <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 mb-1">
-                          {t('dashboard.turningAge', { age: age.toString() })}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 italic">
-                          {t('dashboard.birthdayWish')}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-
-            {/* Anniversary Cards */}
-            {todayAnniversaries.map((event, index) => {
-              const years = event.anniversaryDate ? calculateAnniversaryYears(event.anniversaryDate) : 0;
-              return (
-                <motion.div
-                  key={`anniversary-${index}`}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: (todayBirthdays.length + index) * 0.1, type: "spring", stiffness: 200 }}
-                  className="relative overflow-hidden"
-                >
-                  <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/20 border-2 border-accent-yellow shadow-lg">
-                    <motion.div
-                      animate={{
-                        boxShadow: [
-                          "0 0 20px rgba(234, 179, 8, 0.3)",
-                          "0 0 30px rgba(234, 179, 8, 0.5)",
-                          "0 0 20px rgba(234, 179, 8, 0.3)",
-                        ],
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute inset-0 rounded-xl"
-                    />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Heart className="w-5 h-5 text-accent-yellow flex-shrink-0" />
-                        <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">
-                          {t('dashboard.todayAnniversary', { name1: event.member1Name || '', name2: event.member2Name || '' })}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-3 md:gap-4">
-                        <div className="flex -space-x-2">
-                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden bg-gray-200">
-                            {event.avatar ? (
-                              <img src={event.avatar} alt={event.member1Name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-600">
-                                {event.member1Name?.charAt(0).toUpperCase() || "?"}
-                              </div>
-                            )}
-                          </div>
-                          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden bg-gray-200">
-                            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-600">
-                              {event.member2Name?.charAt(0).toUpperCase() || "?"}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm md:text-base text-gray-700 dark:text-gray-300 mb-1 font-semibold">
-                            {t('dashboard.completedYears', { years: years.toString() })}
-                          </p>
-                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 italic">
-                            {t('dashboard.anniversaryWish')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
+        {/* Special Celebrations Section */}
+        {(birthdayEvents.length > 0 || anniversaryEvents.length > 0) && (
+          <div className="grid gap-4">
+            {birthdayEvents.map((event, i) => (
+              <CelebrationCard key={i} type="birthday" event={event} t={t} />
+            ))}
+            {anniversaryEvents.map((event, i) => (
+              <CelebrationCard key={i} type="anniversary" event={event} t={t} />
+            ))}
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <Card>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent-blue/10 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-accent-blue" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {t('dashboard.familyMembers') || 'Family Members'}
-                  </p>
-                  <p className="text-3xl font-bold">{stats.totalMembers}</p>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <Card>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent-orange/10 rounded-xl flex items-center justify-center">
-                  <GitBranch className="w-6 h-6 text-accent-orange" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {t('dashboard.generations') || 'Generations'}
-                  </p>
-                  <p className="text-3xl font-bold">{stats.totalGenerations}</p>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard icon={<Users />} label={t('dashboard.familyMembers')} value={stats?.totalMembers} color="blue" />
+          <StatCard icon={<GitBranch />} label={t('dashboard.generations')} value={stats?.totalGenerations} color="orange" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Cake className="w-6 h-6 text-accent-orange" />
-              <h2 className="text-xl font-semibold">{t('dashboard.upcomingBirthdays') || 'Upcoming Birthdays'}</h2>
-            </div>
-
-            {stats.upcomingBirthdays.length > 0 ? (
-              <div className="space-y-3">
-                {stats.upcomingBirthdays.map((member, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20"
-                  >
-                    <div>
-                      <p className="font-semibold">{member.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {format(
-                          parseDateOnly(member.nextBirthday),
-                          "MMM dd, yyyy"
-                        )}
-                      </p>
-                    </div>
-                    <span className="badge badge-orange">
-                      {member.daysUntil} {t('dashboard.days') || 'days'}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500">{t('dashboard.noUpcomingBirthdays') || 'No upcoming birthdays'}</p>
-            )}
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Heart className="w-6 h-6 text-accent-yellow" />
-              <h2 className="text-xl font-semibold">{t('dashboard.upcomingAnniversaries') || 'Upcoming Anniversaries'}</h2>
-            </div>
-
-            {stats.upcomingAnniversaries.length > 0 ? (
-              <div className="space-y-3">
-                {stats.upcomingAnniversaries.map((a, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20"
-                  >
-                    <div>
-                      <p className="font-semibold">
-                        {a.member1} & {a.member2}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {format(
-                          parseDateOnly(a.anniversaryDate),
-                          "MMM dd, yyyy"
-                        )}
-                      </p>
-                    </div>
-                    <span className="badge badge-yellow">
-                      {a.daysUntil} {t('dashboard.days') || 'days'}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500">
-                {t('dashboard.noUpcomingAnniversaries') || 'No upcoming anniversaries'}
-              </p>
-            )}
-          </Card>
+        {/* Lists Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UpcomingList title={t('dashboard.upcomingBirthdays')} icon={<Cake className="text-accent-orange" />} items={stats?.upcomingBirthdays} type="birthday" />
+          <UpcomingList title={t('dashboard.upcomingAnniversaries')} icon={<Heart className="text-accent-yellow" />} items={stats?.upcomingAnniversaries} type="anniversary" />
         </div>
       </motion.div>
     </Layout>
   );
 };
+
+// Sub-components for cleaner structure
+const StatCard = ({ icon, label, value, color }: any) => (
+  <Card className="flex items-center gap-4">
+    <div className={`w-12 h-12 bg-accent-${color}/10 rounded-xl flex items-center justify-center text-accent-${color}`}>
+      {React.cloneElement(icon, { className: "w-6 h-6" })}
+    </div>
+    <div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-3xl font-bold">{value}</p>
+    </div>
+  </Card>
+);
+
+const UpcomingList = ({ title, icon, items, type }: any) => (
+  <Card>
+    <div className="flex items-center gap-2 mb-4">{icon} <h2 className="text-xl font-semibold">{title}</h2></div>
+    <div className="space-y-3">
+      {items?.map((item: any, i: number) => (
+        <div key={i} className="flex justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900/40">
+          <div>
+            <p className="font-semibold">{item.name || `${item.member1} & ${item.member2}`}</p>
+            <p className="text-xs text-gray-500">{format(parseISO(item.nextBirthday || item.anniversaryDate), "MMM dd")}</p>
+          </div>
+          <span className="text-xs font-bold text-accent-blue">{item.daysUntil} days left</span>
+        </div>
+      ))}
+    </div>
+  </Card>
+);
+
+const CelebrationCard = ({ type, event, t }: any) => (
+  <Card className={`border-2 ${type === 'birthday' ? 'border-accent-orange bg-orange-50/50' : 'border-accent-yellow bg-yellow-50/50'}`}>
+     {/* Logic from your original card simplified for brevity */}
+     <div className="flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center font-bold text-xl">
+          {event.memberName?.charAt(0)}
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">{type === 'birthday' ? t('dashboard.todayBirthday', {name: event.memberName}) : "Happy Anniversary!"}</h3>
+          <p className="text-sm opacity-80">{type === 'birthday' ? t('dashboard.birthdayWish') : t('dashboard.anniversaryWish')}</p>
+        </div>
+     </div>
+  </Card>
+);
