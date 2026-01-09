@@ -37,6 +37,13 @@ export const authAPI = {
     );
     return { user: response.data.user };
   },
+  register: async (email: string, password: string, familyMemberId: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post<{ success: boolean; message: string }>(
+      "/auth/register",
+      { email, password, familyMemberId }
+    );
+    return response.data;
+  },
   logout: async (): Promise<void> => {
     await api.post("/auth/logout");
     localStorage.removeItem("user");
@@ -206,7 +213,7 @@ export const uploadAPI = {
   ): Promise<{ imageUrl: string; cloudinaryId: string }> => {
     const formData = new FormData();
     formData.append("image", file);
-    const response = await api.post<
+    const response = await api.post
       ApiResponse<{ imageUrl: string; cloudinaryId: string }>
     >("/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
