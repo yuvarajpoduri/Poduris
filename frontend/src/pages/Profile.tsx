@@ -2,71 +2,57 @@ import React, { useState, useEffect } from "react";
 import { Layout } from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { familyMembersAPI, uploadAPI } from "../utils/api";
+import { familyMembersAPI, uploadAPI, authAPI } from "../utils/api";
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [avatar, setAvatar] = useState("");
-  const [bio, setBio] = useState("");
-  const [location, setLocation] = useState("");
-  const [occupation, setOccupation] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [anniversaryDate, setAnniversaryDate] = useState<string | null>(null);
-  const [gender, setGender] = useState<"male" | "female" | "other">("male");
+  
+  // States
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    avatar: "",
+    bio: "",
+    location: "",
+    occupation: "",
+    birthDate: "",
+    anniversaryDate: "" as string | null,
+    gender: "male" as "male" | "female" | "other"
+  });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<{type: 'success' | 'error', msg: string} | null>(null);
 
   useEffect(() => {
-    if (!user || user.role === 'admin') {
-      setLoading(false);
-      return;
+    if (user && user.role !== 'admin') {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        password: "",
+        avatar: user.avatar || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        occupation: user.occupation || "",
+        birthDate: user.birthDate || "",
+        anniversaryDate: user.anniversaryDate || null,
+        gender: user.gender || "male",
+      });
     }
-    
-    // Load profile data from user object
-    setName(user.name || "");
-    setEmail(user.email || "");
-    setAvatar(user.avatar || "");
-    setBio(user.bio || "");
-    setLocation(user.location || "");
-    setOccupation(user.occupation || "");
-    setBirthDate(user.birthDate || "");
-    setAnniversaryDate(user.anniversaryDate || null);
-    setGender(user.gender || "male");
     setLoading(false);
   }, [user]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
   
   if (user.role === 'admin') {
     return (
       <Layout>
-        <div className="space-y-6 max-w-2xl mx-auto">
-          <div className="card bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700">
-            <p className="text-yellow-800 dark:text-yellow-300">
-              Admin accounts do not have profiles. Use the Admin panel to manage family members.
-            </p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="text-center">
-            <div className="animate-pulse-soft text-4xl mb-4">⏳</div>
-            <p className="text-gray-600">{t("common.loading")}</p>
-          </div>
+        <div className="max-w-2xl mx-auto p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200">
+          <p className="text-blue-800 dark:text-blue-300 font-medium">
+            🛡️ {t("profile.adminNotice") || "Admin accounts are managed via the dashboard settings."}
+          </p>
         </div>
       </Layout>
     );
@@ -75,59 +61,36 @@ export const Profile: React.FC = () => {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setError(null);
-    setMessage(null);
     try {
       const result = await uploadAPI.uploadImage(file);
-      setAvatar(result.imageUrl);
+      setFormData(prev => ({ ...prev, avatar: result.imageUrl }));
     } catch (err: any) {
-      setError(err.response?.data?.message || t("common.error"));
+      setStatus({ type: 'error', msg: t("common.error") });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
-    setMessage(null);
+    setStatus(null);
 
     try {
-      const updateData: any = {
-        name,
-        email,
-        avatar,
-        bio,
-        location,
-        occupation,
-        birthDate,
-        anniversaryDate,
-        gender,
-      };
-      
-      // Only include password if it's provided
-      if (password && password.length >= 6) {
-        updateData.password = password;
+      const updateData: any = { ...formData };
+      if (!updateData.password || updateData.password.length < 6) {
+        delete updateData.password;
       }
 
-      const updatedMember = await familyMembersAPI.update(user.id, updateData);
-      setMessage(t("profile.saved") || "Profile saved successfully");
+      await familyMembersAPI.update(user.id, updateData);
+      setStatus({ type: 'success', msg: t("profile.saved") || "Profile updated!" });
       
-      // Clear password field
-      setPassword("");
+      // Update local storage and global state without a hard reload
+      const updatedUser = await authAPI.getMe();
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      // Refresh user data from server
-      setTimeout(async () => {
-        try {
-          const { authAPI } = await import('../utils/api');
-          const userData = await authAPI.getMe();
-          localStorage.setItem('user', JSON.stringify(userData));
-          window.location.reload();
-        } catch (err) {
-          console.error('Failed to refresh user data:', err);
-        }
-      }, 1500);
+      // We give the user 2 seconds to see the success message before clearing
+      setTimeout(() => setStatus(null), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || t("common.error") || "Failed to save profile");
+      setStatus({ type: 'error', msg: err.response?.data?.message || "Update failed" });
     } finally {
       setSaving(false);
     }
@@ -135,189 +98,71 @@ export const Profile: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-2xl mx-auto">
-        <div>
-          <h1 className="mb-2">{t("profile.title")}</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {t("profile.subtitle")}
-          </p>
-        </div>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <header>
+          <h1 className="text-3xl font-bold">{t("profile.title")}</h1>
+          <p className="text-gray-500">{t("profile.subtitle")}</p>
+        </header>
 
-        <form
-          onSubmit={handleSubmit}
-          className="card space-y-4"
-        >
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          {message && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded">
-              {message}
+        <form onSubmit={handleSubmit} className="card space-y-6 shadow-sm">
+          {status && (
+            <div className={`p-4 rounded-xl border-2 ${status.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {status.msg}
             </div>
           )}
 
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              {avatar ? (
-                <img
-                  src={avatar}
-                  alt={name}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-accent-blue"
-                />
+          <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
+            <div className="relative group">
+              {formData.avatar ? (
+                <img src={formData.avatar} className="w-24 h-24 rounded-full object-cover ring-4 ring-white dark:ring-gray-700 shadow-lg" alt="Profile" />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-accent-blue/20 flex items-center justify-center text-2xl font-semibold text-accent-blue">
-                  {user.name.charAt(0).toUpperCase()}
+                <div className="w-24 h-24 rounded-full bg-accent-blue text-white flex items-center justify-center text-3xl font-bold">
+                  {user.name.charAt(0)}
                 </div>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white mb-1">
+            <div className="flex-1">
+              <label className="block text-sm font-bold mb-2 uppercase tracking-wider text-gray-500">
                 {t("profile.avatar")}
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="input"
-              />
+              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent-blue/10 file:text-accent-blue hover:file:bg-accent-blue/20 cursor-pointer" />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">
-              {t("profile.name") || "Name"}
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">
-              Password (leave blank to keep current)
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input"
-              minLength={6}
-              placeholder="Enter new password (min 6 characters)"
-            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white mb-1">
-                Birth Date
-              </label>
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="input"
-                required
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">{t("profile.name")}</label>
+              <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input w-full" required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white mb-1">
-                Anniversary Date
-              </label>
-              <input
-                type="date"
-                value={anniversaryDate || ''}
-                onChange={(e) => setAnniversaryDate(e.target.value || null)}
-                className="input"
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Email</label>
+              <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="input w-full" required />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">
-              Gender
-            </label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as "male" | "female" | "other")}
-              className="input"
-              required
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">
-              {t("profile.bio") || "Bio"}
-            </label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              className="input"
-            />
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">New Password (Optional)</label>
+            <input type="password" placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="input w-full" minLength={6} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white mb-1">
-                {t("profile.location") || "Location"}
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="input"
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Birth Date</label>
+              <input type="date" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} className="input w-full" required />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-black dark:text-white mb-1">
-                {t("profile.occupation") || "Occupation"}
-              </label>
-              <input
-                type="text"
-                value={occupation}
-                onChange={(e) => setOccupation(e.target.value)}
-                className="input"
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Anniversary Date</label>
+              <input type="date" value={formData.anniversaryDate || ""} onChange={e => setFormData({...formData, anniversaryDate: e.target.value || null})} className="input w-full" />
             </div>
           </div>
-          
-          {user.generation !== undefined && (
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Generation:</strong> {user.generation} • <strong>Family ID:</strong> {user.familyMemberId}
-              </p>
-            </div>
-          )}
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary"
-            >
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Bio</label>
+            <textarea rows={3} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="input w-full" />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="submit" disabled={saving} className="btn-primary px-8 py-3">
               {saving ? t("common.loading") : t("profile.save")}
             </button>
           </div>
@@ -325,6 +170,4 @@ export const Profile: React.FC = () => {
       </div>
     </Layout>
   );
-}
-
-
+};
