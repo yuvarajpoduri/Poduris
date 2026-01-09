@@ -30,7 +30,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(false);
       }
     };
-
     initAuth();
   }, []);
 
@@ -40,21 +39,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  // Fixed: Register now handles the response/state if needed
   const register = async (email: string, password: string, familyMemberId: number) => {
-    try {
-      await authAPI.register(email, password, familyMemberId);
-      // Optional: Auto-login after registration or just let the component handle redirect
-    } catch (error) {
-      throw error; // Re-throw so the UI can catch and display the error
-    }
+    const response = await authAPI.register(email, password, familyMemberId);
+    return response;
   };
 
   const logout = async () => {
     try {
       await authAPI.logout();
     } catch (error) {
-      // Continue cleanup even if server-side logout fails
+      console.error('Logout error:', error);
     }
     localStorage.removeItem('user');
     setUser(null);
