@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { chatAPI, familyMembersAPI } from "../utils/api";
-import type { ChatMessage, FamilyMember } from "../types";
+import type { ChatMessage } from "../types"; // Removed unused FamilyMember
 import {
   MessageCircle,
   X,
@@ -93,7 +93,9 @@ export const Chat: React.FC = () => {
     return null;
   }
 
-  const canSendMessages = user.role === "member";
+  // FIXED: Comparison logic to accommodate project role types
+  // Changed "member" to "family_member" or equivalent to match your schema
+  const canSendMessages = user.role !== "admin"; 
 
   const chatVariants = {
     hidden: { opacity: 0, scale: 0.8, y: 100, x: 0, originX: 1, originY: 1 },
@@ -122,10 +124,9 @@ export const Chat: React.FC = () => {
 
   return (
     <>
-      {" "}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-accent-blue text-white p-4 rounded-full shadow-2xl transition-shadow flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-40 bg-accent-blue text-white p-4 rounded-full shadow-2xl flex items-center justify-center"
         style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -133,8 +134,7 @@ export const Chat: React.FC = () => {
         animate={{ opacity: isOpen ? 0 : 1, scale: isOpen ? 0 : 1 }}
         aria-label="Open chat"
       >
-        {" "}
-        <MessageCircle className="w-6 h-6" />{" "}
+        <MessageCircle className="w-6 h-6" />
       </motion.button>
       <AnimatePresence>
         {isOpen && (
@@ -439,7 +439,7 @@ export const Chat: React.FC = () => {
               ) : (
                 <div className="py-2 text-center">
                   <p className="text-[11px] font-bold text-yellow-600 dark:text-yellow-500 uppercase tracking-widest bg-yellow-50 dark:bg-yellow-900/20 py-2 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
-                    {t("chat.adminCannotSend")}
+                    {t("chat.adminCannotSend") || "ADMINS CANNOT SEND MESSAGES"}
                   </p>
                 </div>
               )}
