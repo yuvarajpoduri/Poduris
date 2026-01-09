@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
@@ -20,51 +21,71 @@ connectDB();
 
 const app = express();
 
+/* =======================
+   TRUST PROXY (REQUIRED)
+======================= */
 app.set("trust proxy", 1);
 
+/* =======================
+   CORS CONFIG
+======================= */
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://poduris.onrender.com",
-  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
+      // Allow server-to-server & mobile webviews
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-        return callback(new Error(msg), false);
+
+      if (!allowedOrigins.includes(origin)) {
+        return callback(
+          new Error(`CORS blocked for origin: ${origin}`),
+          false
+        );
       }
+
       return callback(null, true);
     },
     credentials: true,
   })
 );
 
+/* =======================
+   BODY PARSERS
+======================= */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+/* =======================
+   SESSION CONFIG (FIXED)
+======================= */
 app.use(
   session({
     name: "family_tree_sid",
-    secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
+    secret: process.env.SESSION_SECRET || "CHANGE_THIS_SECRET",
     resave: false,
     saveUninitialized: false,
+    proxy: true, // 🔥 REQUIRED ON RENDER
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI,
-      ttl: 14 * 24 * 60 * 60,
+      ttl: 14 * 24 * 60 * 60, // 14 days
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       httpOnly: true,
+      secure: true,        // 🔥 FORCE HTTPS COOKIES
+      sameSite: "none",    // 🔥 REQUIRED FOR CROSS-SITE
       maxAge: 14 * 24 * 60 * 60 * 1000,
     },
   })
 );
 
+/* =======================
+   ROUTES
+======================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/family-members", familyMemberRoutes);
@@ -74,6 +95,9 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 
+/* =======================
+   HEALTH CHECK
+======================= */
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -81,17 +105,16 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+/* =======================
+   ERROR HANDLER
+======================= */
 app.use(errorHandler);
 
+/* =======================
+   START SERVER
+======================= */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(
-    `Server running in ${
-      process.env.NODE_ENV || "development"
-    } mode on port ${PORT}`
-  );
-});
 
-if (process.env.NODE_ENV !== "production") {
-  console.log("Cloudinary Configured:", !!process.env.CLOUDINARY_API_KEY);
-}
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
