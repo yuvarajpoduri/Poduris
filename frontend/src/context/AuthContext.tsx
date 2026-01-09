@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, familyMemberId: number) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: () => boolean;
 }
@@ -19,13 +20,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Try to get user from session
         const userData = await authAPI.getMe();
         setUser(userData);
-        // Save user to localStorage for quick access (not for auth)
         localStorage.setItem('user', JSON.stringify(userData));
       } catch (error) {
-        // No valid session
         localStorage.removeItem('user');
         setUser(null);
       } finally {
@@ -39,15 +37,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     const { user: userData } = await authAPI.login(email, password);
     setUser(userData);
-    // Save user to localStorage for quick access (not for auth)
     localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const register = async (email: string, password: string, familyMemberId: number) => {
+    await authAPI.register(email, password, familyMemberId);
   };
 
   const logout = async () => {
     try {
       await authAPI.logout();
     } catch (error) {
-      // Continue with logout even if API call fails
+      // Continue cleanup
     }
     localStorage.removeItem('user');
     setUser(null);
@@ -58,7 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
@@ -71,4 +72,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
