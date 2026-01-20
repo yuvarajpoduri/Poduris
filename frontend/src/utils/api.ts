@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   Event,
   Wish,
+  Announcement,
 } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -293,6 +294,13 @@ export const wishAPI = {
   getSentIds: async (): Promise<number[]> => {
     const response = await api.get<{ success: boolean; data: number[] }>("/wishes/sent-ids");
     return response.data.data!;
+  },
+};
+
+export const announcementsAPI = {
+  getAll: async (): Promise<Announcement[]> => {
+    const response = await api.get<ApiResponse<Announcement[]>>("/announcements");
+    return response.data.data || [];
   },
 };
 

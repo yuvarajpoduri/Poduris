@@ -151,3 +151,17 @@ export interface Wish {
   year: number;
   createdAt: string;
 }
+
+export interface Announcement {
+  _id: string;
+  title: string;
+  content: string;
+  category: 'birthday' | 'anniversary' | 'event' | 'news' | 'other';
+  createdBy: {
+    _id: string;
+    name: string;
+    avatar?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}

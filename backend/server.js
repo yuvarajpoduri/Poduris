@@ -10,7 +10,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import familyMemberRoutes from "./routes/familyMemberRoutes.js";
-// import announcementRoutes from "./routes/announcementRoutes.js"; // Removed
+import announcementRoutes from "./routes/announcementRoutes.js";
 import galleryRoutes from "./routes/galleryRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -96,7 +96,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/family-members", familyMemberRoutes);
-// app.use("/api/announcements", announcementRoutes); // Removed
+app.use("/api/announcements", announcementRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/calendar", calendarRoutes);
