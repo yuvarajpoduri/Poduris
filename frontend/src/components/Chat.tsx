@@ -9,7 +9,6 @@ import {
   Send,
   Trash2,
   Reply,
-  User as UserIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -192,7 +191,7 @@ export const Chat: React.FC = () => {
                   <p className="font-medium text-gray-500">No messages yet. Say hello!</p>
                 </div>
               ) : (
-                messages.map((message, index) => {
+                messages.map((message) => {
                   const senderId =
                     message.sender?._id || (message.sender as any)?._id;
                   const isOwnMessage = senderId === user?.id;

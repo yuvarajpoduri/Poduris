@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Image as ImageIcon, UploadCloud, CheckCircle, Loader2, Plus } from "lucide-react";
 
 export const Gallery: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { showToast } = useToast();
   

@@ -79,6 +79,7 @@ export interface CalendarEvent {
   birthDate?: string;
   anniversaryDate?: string;
   email?: string;
+  description?: string;
 }
 
 export interface DashboardStats {

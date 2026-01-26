@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
-import { familyMembersAPI, calendarAPI } from "../utils/api";
-import type { DashboardStats, CalendarEvent } from "../types";
+import { familyMembersAPI } from "../utils/api";
+import type { DashboardStats } from "../types";
 import { format } from "date-fns";
 import { 
   Users, 
   GitBranch, 
-  Cake, 
-  Heart, 
   Loader2, 
   Calendar as CalendarIcon, 
   Image as ImageIcon,
@@ -15,7 +13,6 @@ import {
   Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -108,15 +105,7 @@ const EventRow = ({ title, date, daysUntil, type, avatar }: any) => (
     </div>
 );
 
-// --- Main Dashboard Component ---
-
-const parseDateOnly = (dateStr: string) => {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
-
 export const Dashboard: React.FC = () => {
-  const { t } = useLanguage();
   const { user } = useAuth();
   
   const [stats, setStats] = useState<DashboardStats>({
@@ -161,8 +150,8 @@ export const Dashboard: React.FC = () => {
 
   // Combine and sort events
   const allUpcoming = [
-      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday', date: b.nextBirthday, title: b.name })),
-      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary', date: a.anniversaryDate, title: `${a.member1} & ${a.member2}` }))
+      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: b.name })),
+      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${a.member1} & ${a.member2}`, avatar: undefined as string | undefined }))
   ].filter(e => e.daysUntil >= 0)
    .sort((a, b) => a.daysUntil - b.daysUntil)
    .slice(0, 5); // Just show top 5

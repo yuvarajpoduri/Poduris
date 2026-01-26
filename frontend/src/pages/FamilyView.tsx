@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
-import { StaggerContainer } from '../components/Reveal';
 import { familyMembersAPI } from '../utils/api';
 import type { FamilyMember, FamilyMemberWithRelations } from '../types';
 import { format } from 'date-fns';
-import { Users, GitBranch, User, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin, Briefcase } from 'lucide-react';
+import { Users, GitBranch, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const FamilyView: React.FC = () => {

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
-import { CalendarCell } from "../components/CalendarCell";
 import { calendarAPI } from "../utils/api";
 import type { CalendarEvent } from "../types";
 import {
@@ -17,7 +16,6 @@ import {
   Cake,
   Heart,
   Eye,
-  X,
   Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,7 +25,6 @@ import { Modal } from "../components/Modal";
 const calculateAgeDisplay = (birthDate: string, eventDate: string) => {
   const birth = new Date(birthDate);
   const event = new Date(eventDate);
-  const today = new Date();
 
   // Basic age calculation based on years
   let age = event.getFullYear() - birth.getFullYear();
@@ -63,9 +60,6 @@ export const Calendar: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // Month Selection State
-  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
