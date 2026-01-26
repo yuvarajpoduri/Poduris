@@ -5,7 +5,7 @@ import {
   MessageCircle, Image as ImageIcon, Database, Server,
   PieChart as PieChartIcon, BarChart3, Globe, Eye, EyeOff, Clock
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../utils/api';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar, Legend
@@ -70,12 +70,19 @@ const cleanName = (name: string) => {
 };
 
 const formatTime = (seconds: number) => {
+  if (!seconds || seconds < 0) return '0s';
   if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   const remainingMins = mins % 60;
   return `${hours}h ${remainingMins}m`;
+};
+
+const safeDate = (dateVal: any) => {
+  if (!dateVal) return new Date();
+  const d = new Date(dateVal);
+  return isNaN(d.getTime()) ? new Date() : d;
 };
 
 export const AdminTrends: React.FC = () => {
@@ -95,7 +102,7 @@ export const AdminTrends: React.FC = () => {
   const fetchStats = async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
-      const response = await axios.get('/api/stats', { withCredentials: true });
+      const response = await api.get('/stats');
       if (response.data.success) {
         setStats(response.data.data);
       }
@@ -120,10 +127,10 @@ export const AdminTrends: React.FC = () => {
 
     try {
       const endpoint = user.type === 'admin' 
-        ? `/api/users/${user._id}/reset-password`
-        : `/api/family-members/${user._id}/reset-password`;
+        ? `/users/${user._id}/reset-password`
+        : `/family-members/${user._id}/reset-password`;
       
-      await axios.put(endpoint, { password: newPassword }, { withCredentials: true });
+      await api.put(endpoint, { password: newPassword });
       alert('Password reset successfully');
       setResettingPassword(null);
       setNewPassword('');
@@ -544,7 +551,7 @@ export const AdminTrends: React.FC = () => {
                             <span className="truncate">{u.currentPath}</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">
-                            {formatDistanceToNow(new Date(u.lastActive), { addSuffix: true })}
+                            {formatDistanceToNow(safeDate(u.lastActive), { addSuffix: true })}
                           </p>
                         </div>
                       </div>
