@@ -78,7 +78,7 @@ export const Gallery: React.FC = () => {
         date: format(new Date(), "yyyy-MM-dd")
       }));
 
-      setFilesToUpload(selectedFiles);
+
       setPreviews(newPreviews);
       setUploadStep('details');
     }
