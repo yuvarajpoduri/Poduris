@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
@@ -23,6 +25,9 @@ import wishRoutes from "./routes/wishRoutes.js";
 
 console.log("Loading environment variables...");
 console.log("MONGODB_URI present:", !!process.env.MONGODB_URI);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 connectDB();
 
@@ -115,6 +120,22 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
   });
 });
+
+/* =======================
+   STATIC ASSETS (PRODUCTION)
+======================= */
+if (process.env.NODE_ENV === "production" || process.env.SERVE_FRONTEND === "true") {
+  const frontendPath = path.join(__dirname, "../frontend/dist");
+  app.use(express.static(frontendPath));
+  
+  app.get("*", (req, res, next) => {
+    // If request starts with /api, it shouldn't be handled by the frontend router
+    if (req.url.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.resolve(frontendPath, "index.html"));
+  });
+}
 
 /* =======================
    ERROR HANDLER
