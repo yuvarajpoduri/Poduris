@@ -184,11 +184,12 @@ export const uploadAPI = {
   ): Promise<{ imageUrl: string; cloudinaryId: string }> => {
     const formData = new FormData();
     formData.append("image", file);
-    // FIXED: Added missing '<' before ApiResponse
-    const response = await api.post<
+    
+    // Use raw axios to avoid instance defaults
+    const response = await axios.post<
       ApiResponse<{ imageUrl: string; cloudinaryId: string }>
-    >("/upload", formData, {
-      headers: { "Content-Type": undefined },
+    >(`${API_URL}/upload`, formData, {
+      withCredentials: true,
     });
     return response.data.data!;
   },

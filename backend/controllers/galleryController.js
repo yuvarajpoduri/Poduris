@@ -196,6 +196,8 @@ export const uploadGalleryImage = async (req, res, next) => {
     }
 
     const createdImages = [];
+    const batchId = imagesToProcess.length > 1 ? new mongoose.Types.ObjectId().toString() : null;
+
     for (const imgData of imagesToProcess) {
       const image = await Gallery.create({
         title: imgData.title || title || 'Untitled',
@@ -206,7 +208,8 @@ export const uploadGalleryImage = async (req, res, next) => {
         cloudinaryId: imgData.cloudinaryId,
         uploadedBy: req.user._id,
         familyMemberId: familyMemberId || req.user.familyMemberId || null,
-        status: 'approved'
+        status: 'approved',
+        batchId
       });
       createdImages.push(image);
     }

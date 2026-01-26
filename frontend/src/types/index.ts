@@ -65,6 +65,7 @@ export interface GalleryImage {
   };
   familyMemberId: number | null;
   status: 'pending' | 'approved' | 'rejected';
+  batchId?: string;
   createdAt: string;
   updatedAt: string;
 }

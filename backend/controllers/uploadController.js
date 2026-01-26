@@ -75,6 +75,7 @@ export const uploadImage = async (req, res, next) => {
 
 // Export multer middleware with error handling wrapper
 export const uploadMiddleware = (req, res, next) => {
+  console.log('Multer Middleware starting...');
   upload.single('image')(req, res, (err) => {
     if (err) {
       console.error('Multer Middleware Error:', err);
@@ -86,6 +87,7 @@ export const uploadMiddleware = (req, res, next) => {
       }
       return res.status(400).json({ success: false, message: err.message });
     }
+    console.log('Multer parsing finished. File found:', !!req.file);
     next();
   });
 };

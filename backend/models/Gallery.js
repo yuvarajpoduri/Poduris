@@ -41,6 +41,10 @@ const gallerySchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
+  },
+  batchId: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

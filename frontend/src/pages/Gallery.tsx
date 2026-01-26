@@ -8,7 +8,7 @@ import type { GalleryImage } from "../types";
 import { format } from "date-fns";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2 } from "lucide-react";
+import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export const Gallery: React.FC = () => {
   const { user } = useAuth();
@@ -29,12 +29,53 @@ export const Gallery: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadStep, setUploadStep] = useState<'select' | 'details' | 'uploading' | 'success'>('select');
 
-  const [previews, setPreviews] = useState<{ url: string; file: File; title: string; description: string; location: string; date: string }[]>([]);
+  const [previews, setPreviews] = useState<{ url: string; file: File }[]>([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [batchDetails, setBatchDetails] = useState({
+    title: "",
+    description: "",
+    location: "",
+    date: format(new Date(), "yyyy-MM-dd")
+  });
   
   // Slideshow State
   const [isSlideshowActive, setIsSlideshowActive] = useState(false);
   const [slideshowIndex, setSlideshowIndex] = useState(0);
   const [isSlideshowPaused, setIsSlideshowPaused] = useState(false);
+
+  // Batch Detail Navigation
+  const [currentBatchImageIndex, setCurrentBatchImageIndex] = useState(0);
+
+  // Memoized Display Items (Grouped by Batch)
+  const displayItems = React.useMemo(() => {
+    const items: GalleryImage[] = [];
+    const seenBatches = new Set<string>();
+
+    images.forEach(img => {
+      if (!img.batchId) {
+        items.push(img);
+      } else if (!seenBatches.has(img.batchId)) {
+        seenBatches.add(img.batchId);
+        items.push(img);
+      }
+    });
+    return items;
+  }, [images]);
+
+  // Find all images in the same batch as selectedImage
+  const currentBatch = React.useMemo(() => {
+    if (!selectedImage) return [];
+    if (!selectedImage.batchId) return [selectedImage];
+    return images.filter(img => img.batchId === selectedImage.batchId);
+  }, [selectedImage, images]);
+
+  // Sync index when selectedImage changes
+  useEffect(() => {
+    if (selectedImage && currentBatch.length > 0) {
+      const idx = currentBatch.findIndex(img => img._id === selectedImage._id);
+      setCurrentBatchImageIndex(idx >= 0 ? idx : 0);
+    }
+  }, [selectedImage, currentBatch]);
 
   const fetchImages = async () => {
     try {
@@ -71,31 +112,28 @@ export const Gallery: React.FC = () => {
       
       const newPreviews = selectedFiles.map(file => ({
         url: URL.createObjectURL(file),
-        file,
+        file
+      }));
+
+      setPreviews(newPreviews);
+      setCurrentPreviewIndex(0);
+      setBatchDetails({
         title: "",
         description: "",
         location: "",
         date: format(new Date(), "yyyy-MM-dd")
-      }));
-
-
-      setPreviews(newPreviews);
+      });
       setUploadStep('details');
     }
   };
 
-  const updatePreviewData = (index: number, data: any) => {
-    const updated = [...previews];
-    updated[index] = { ...updated[index], ...data };
-    setPreviews(updated);
-  };
+
 
   const handleUpload = async () => {
     if (previews.length === 0) return;
     
-    // Check if all have titles
-    if (previews.some(p => !p.title.trim())) {
-      showToast("Please provide titles for all images", "error");
+    if (!batchDetails.title.trim()) {
+      showToast("Please provide a title for these memories", "error");
       return;
     }
 
@@ -103,11 +141,12 @@ export const Gallery: React.FC = () => {
     try {
       const uploadPromises = previews.map(async (preview) => {
         const uploadResult = await uploadAPI.uploadImage(preview.file);
+        
         return {
-          title: preview.title,
-          description: preview.description,
-          location: preview.location,
-          date: preview.date,
+          title: batchDetails.title,
+          description: batchDetails.description,
+          location: batchDetails.location,
+          date: batchDetails.date,
           imageUrl: uploadResult.imageUrl,
           cloudinaryId: uploadResult.cloudinaryId,
         };
@@ -159,9 +198,23 @@ export const Gallery: React.FC = () => {
     }
   };
 
-  // Slideshow Logic
+  // Slideshow Logic - Filtered to ONLY current month & year
+  const activeSlideshowImages = React.useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
+    return images.filter(img => {
+      const d = new Date(img.date || img.createdAt);
+      return (d.getMonth() + 1) === currentMonth && d.getFullYear() === currentYear;
+    });
+  }, [images]);
+
   const startSlideshow = () => {
-    if (images.length === 0) return;
+    if (activeSlideshowImages.length === 0) {
+      showToast("No memories found for this month yet", "error");
+      return;
+    }
     setIsSlideshowActive(true);
     setSlideshowIndex(0);
     setIsSlideshowPaused(false);
@@ -169,13 +222,31 @@ export const Gallery: React.FC = () => {
 
   useEffect(() => {
     let interval: any;
-    if (isSlideshowActive && !isSlideshowPaused) {
+    if (isSlideshowActive && !isSlideshowPaused && activeSlideshowImages.length > 0) {
       interval = setInterval(() => {
-        setSlideshowIndex((prev) => (prev + 1) % images.length);
+        setSlideshowIndex((prev) => (prev + 1) % activeSlideshowImages.length);
       }, 5000);
     }
     return () => clearInterval(interval);
-  }, [isSlideshowActive, isSlideshowPaused, images.length]);
+  }, [isSlideshowActive, isSlideshowPaused, activeSlideshowImages.length]);
+
+  // Keyboard Support for Batch Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedImage || currentBatch.length <= 1) return;
+      
+      if (e.key === 'ArrowLeft') {
+        const prevIdx = (currentBatchImageIndex - 1 + currentBatch.length) % currentBatch.length;
+        setSelectedImage(currentBatch[prevIdx]);
+      } else if (e.key === 'ArrowRight') {
+        const nextIdx = (currentBatchImageIndex + 1) % currentBatch.length;
+        setSelectedImage(currentBatch[nextIdx]);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedImage, currentBatch, currentBatchImageIndex]);
 
   // Reset slideshow if images disappear or filter changes
   useEffect(() => {
@@ -363,43 +434,58 @@ export const Gallery: React.FC = () => {
         ) : images.length > 0 ? (
           <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 space-y-2 pb-20">
             <AnimatePresence>
-              {images.map((image, index) => (
-                <motion.div
-                  layoutId={`image-card-${image._id}`}
-                  key={image._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.02 }}
-                  onClick={() => setSelectedImage(image)}
-                  className="break-inside-avoid relative group cursor-crosshair rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-900 transition-all duration-500 hover:shadow-2xl hover:scale-[1.01]"
-                >
-                  <img
-                    src={image.imageUrl}
-                    alt={image.title}
-                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  
-                  {/* Subtle info indicator for mobile */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 md:opacity-0 group-hover:opacity-100 transition-all duration-300">
-                     <span className="block text-xs text-white font-heavy truncate mb-1">{image.title}</span>
-                     <div className="flex justify-between items-center">
-                        <span className="text-[9px] text-white/70 font-medium">{format(new Date(image.date || image.createdAt), "MMM yyyy")}</span>
-                        <div className="flex -space-x-1.5 items-center">
-                           <div className="w-5 h-5 rounded-full border border-white/20 bg-blue-600 flex items-center justify-center text-[8px] font-bold text-white uppercase overflow-hidden">
-                              {image.uploadedBy?.avatar ? (
-                                <img src={image.uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
-                              ) : (
-                                image.uploadedBy?.name?.charAt(0)
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-
-
-                </motion.div>
-              ))}
+              {displayItems.map((image, index) => {
+                const batchCount = image.batchId ? images.filter(img => img.batchId === image.batchId).length : 1;
+                
+                return (
+                  <motion.div
+                    layoutId={`image-card-${image._id}`}
+                    key={image._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.02 }}
+                    onClick={() => setSelectedImage(image)}
+                    className="break-inside-avoid relative group cursor-crosshair rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-900 transition-all duration-500 hover:shadow-2xl hover:scale-[1.01]"
+                  >
+                    <img
+                      src={image.imageUrl}
+                      alt={image.title}
+                      className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    
+                    {/* Batch Indicator */}
+                    {batchCount > 1 && (
+                      <div className="absolute top-3 left-3 px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 flex items-center gap-2 z-10 transition-transform group-hover:scale-110">
+                         <div className="flex -space-x-2">
+                            <div className="w-4 h-4 rounded-md border-2 border-white bg-blue-500 shadow-lg" />
+                            <div className="w-4 h-4 rounded-md border-2 border-white bg-blue-400 shadow-lg" />
+                         </div>
+                         <span className="text-[9px] font-black text-white uppercase tracking-widest leading-none drop-shadow-md">
+                           {batchCount} Photos
+                         </span>
+                      </div>
+                    )}
+                    
+                    {/* Subtle info indicator for mobile */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 md:opacity-0 group-hover:opacity-100 transition-all duration-300">
+                       <span className="block text-xs text-white font-heavy truncate mb-1">{image.title}</span>
+                       <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-white/70 font-medium">{format(new Date(image.date || image.createdAt), "MMM yyyy")}</span>
+                          <div className="flex -space-x-1.5 items-center">
+                             <div className="w-5 h-5 rounded-full border border-white/20 bg-blue-600 flex items-center justify-center text-[8px] font-bold text-white uppercase overflow-hidden">
+                                {image.uploadedBy?.avatar ? (
+                                  <img src={image.uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
+                                ) : (
+                                  image.uploadedBy?.name?.charAt(0)
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         ) : (
@@ -417,9 +503,50 @@ export const Gallery: React.FC = () => {
           {selectedImage && (
              <Modal isOpen={!!selectedImage} onClose={() => setSelectedImage(null)} title="" size="2xl" noPadding>
                <div className="flex flex-col md:flex-row h-full max-h-[90vh] md:max-h-[80vh] overflow-hidden bg-white dark:bg-black">
-                  <div className="flex-1 bg-black flex items-center justify-center p-2 relative">
-                      <img src={selectedImage.imageUrl} alt={selectedImage.title} className="max-w-full max-h-full object-contain" />
+                  <div className="flex-1 bg-black flex items-center justify-center p-2 relative group-modal">
+                      <AnimatePresence mode="wait">
+                        <motion.img 
+                          key={selectedImage._id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.1 }}
+                          transition={{ duration: 0.3 }}
+                          src={selectedImage.imageUrl} 
+                          alt={selectedImage.title} 
+                          className="max-w-full max-h-full object-contain" 
+                        />
+                      </AnimatePresence>
 
+                      {/* Batch Navigation Controls */}
+                      {currentBatch.length > 1 && (
+                        <>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const prevIdx = (currentBatchImageIndex - 1 + currentBatch.length) % currentBatch.length;
+                              setSelectedImage(currentBatch[prevIdx]);
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white transition-all z-20"
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const nextIdx = (currentBatchImageIndex + 1) % currentBatch.length;
+                              setSelectedImage(currentBatch[nextIdx]);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white transition-all z-20"
+                          >
+                            <ChevronRight className="w-6 h-6" />
+                          </button>
+                          
+                          {/* Batch Counter */}
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
+                             <span>Memory {currentBatchImageIndex + 1} of {currentBatch.length}</span>
+                          </div>
+                        </>
+                      )}
                   </div>
                   <div className="w-full md:w-96 p-10 flex flex-col bg-white dark:bg-gray-950 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
                       <div className="mb-10">
@@ -493,51 +620,140 @@ export const Gallery: React.FC = () => {
               </div>
             )}
 
-            {uploadStep === 'details' && (
-              <div className="flex flex-col h-full max-h-[75vh] overflow-hidden">
-                 <div className="flex-1 overflow-y-auto space-y-6 py-4 pr-1 custom-scrollbar">
-                    {previews.map((preview, idx) => (
-                      <div key={idx} className="relative flex flex-col md:flex-row gap-6 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+            {uploadStep === 'details' && previews.length > 0 && (
+              <div className="flex flex-col h-full lg:max-h-[85vh] overflow-y-auto lg:overflow-hidden custom-scrollbar">
+                <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 h-full p-1">
+                  
+                  {/* Column 1: Image Slider */}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <h4 className="text-xl font-black tracking-tighter">Selected Memories</h4>
+                        <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{previews.length} photos ready to sync</p>
+                      </div>
+                      <div className="flex gap-2">
                         <button 
-                          onClick={() => removePreview(idx)}
-                          className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-20"
+                          onClick={() => setCurrentPreviewIndex(prev => (prev - 1 + previews.length) % previews.length)}
+                          className="p-2 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                          <X className="w-4 h-4" />
+                          <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <div className="w-full md:w-44 aspect-square rounded-2xl overflow-hidden bg-black flex items-center justify-center shadow-xl shrink-0">
-                           <img src={preview.url} alt="Preview" className="w-full h-full object-cover" />
+                        <button 
+                          onClick={() => setCurrentPreviewIndex(prev => (prev + 1) % previews.length)}
+                          className="p-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl transition-all"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative aspect-video lg:aspect-[4/3] rounded-3xl lg:rounded-[2.5rem] overflow-hidden bg-black shadow-xl ring-1 ring-gray-100 dark:ring-gray-800">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={currentPreviewIndex}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.05 }}
+                          transition={{ duration: 0.4, ease: "circOut" }}
+                          className="w-full h-full relative"
+                        >
+                          <img 
+                            src={previews[currentPreviewIndex].url} 
+                            alt="Preview" 
+                            className="w-full h-full object-contain"
+                          />
+                          <button 
+                            onClick={() => {
+                              const newIndex = currentPreviewIndex === 0 ? 0 : currentPreviewIndex - 1;
+                              removePreview(currentPreviewIndex);
+                              setCurrentPreviewIndex(newIndex);
+                              if (previews.length <= 1) setUploadStep('select');
+                            }}
+                            className="absolute top-3 right-3 p-2 bg-white/20 hover:bg-red-500 text-white backdrop-blur-md rounded-xl transition-all shadow-xl"
+                            title="Remove Photo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </motion.div>
+                      </AnimatePresence>
+
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 bg-black/20 backdrop-blur-md rounded-full">
+                        {previews.map((_, i) => (
+                          <div 
+                            key={i} 
+                            className={`h-1 rounded-full transition-all duration-300 ${i === currentPreviewIndex ? 'w-4 bg-white' : 'w-1 bg-white/40'}`} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Shared Form */}
+                  <div className="flex flex-col bg-gray-50/50 dark:bg-gray-900/50 rounded-3xl lg:rounded-[2.5rem] p-5 lg:p-8 border border-gray-100 dark:border-gray-800 h-full overflow-y-visible lg:overflow-y-auto custom-scrollbar">
+                    <div className="space-y-5 lg:space-y-6">
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Event Title *</label>
+                        <input 
+                          type="text" 
+                          value={batchDetails.title} 
+                          onChange={(e) => setBatchDetails(prev => ({ ...prev, title: e.target.value }))} 
+                          className="w-full px-5 lg:px-6 py-3 lg:py-4 bg-white dark:bg-gray-900 rounded-xl lg:rounded-2xl border-none focus:ring-2 focus:ring-blue-500 font-bold text-base lg:text-lg shadow-sm" 
+                          placeholder="e.g. Summer Reunion 2024" 
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Location</label>
+                          <div className="relative">
+                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input 
+                              type="text" 
+                              value={batchDetails.location} 
+                              onChange={(e) => setBatchDetails(prev => ({ ...prev, location: e.target.value }))} 
+                              className="w-full pl-11 pr-5 lg:pl-12 lg:pr-6 py-3 lg:py-4 bg-white dark:bg-gray-900 rounded-xl lg:rounded-2xl border-none focus:ring-2 focus:ring-blue-500 text-sm font-medium shadow-sm" 
+                              placeholder="Where?" 
+                            />
+                          </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-3 flex-1">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div>
-                                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Title *</label>
-                                 <input type="text" value={preview.title} onChange={(e) => updatePreviewData(idx, { title: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500 font-bold text-sm" placeholder="Title this memory" />
-                              </div>
-                              <div>
-                                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Location</label>
-                                 <input type="text" value={preview.location} onChange={(e) => updatePreviewData(idx, { location: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500 text-sm font-medium" placeholder="Where was this?" />
-                              </div>
-                           </div>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div>
-                                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Date</label>
-                                 <input type="date" value={preview.date} onChange={(e) => updatePreviewData(idx, { date: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500 text-sm font-medium" />
-                              </div>
-                              <div className="flex flex-col">
-                                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Story</label>
-                                 <textarea value={preview.description} onChange={(e) => updatePreviewData(idx, { description: e.target.value })} className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500 text-xs font-medium min-h-[60px] resize-none" placeholder="Tell the story..." />
-                              </div>
-                           </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Date</label>
+                          <input 
+                            type="date" 
+                            value={batchDetails.date} 
+                            onChange={(e) => setBatchDetails(prev => ({ ...prev, date: e.target.value }))} 
+                            className="w-full px-5 lg:px-6 py-3 lg:py-4 bg-white dark:bg-gray-900 rounded-xl lg:rounded-2xl border-none focus:ring-2 focus:ring-blue-500 text-sm font-medium shadow-sm" 
+                          />
                         </div>
                       </div>
-                    ))}
-                 </div>
-                 <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                    <button onClick={() => { setUploadStep('select'); setPreviews([]); }} className="text-gray-400 hover:text-red-500 font-black text-[10px] uppercase tracking-widest transition-colors">Discard Draft</button>
-                    <div className="flex gap-4">
-                        <button onClick={handleUpload} className="px-10 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black shadow-2xl shadow-blue-500/30 text-xs uppercase tracking-[0.2em] transition-transform active:scale-95">Preserve All</button>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Batch Story</label>
+                        <textarea 
+                          value={batchDetails.description} 
+                          onChange={(e) => setBatchDetails(prev => ({ ...prev, description: e.target.value }))} 
+                          className="w-full px-5 lg:px-6 py-3 lg:py-4 bg-white dark:bg-gray-900 rounded-xl lg:rounded-2xl border-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-[100px] lg:min-h-[120px] resize-none shadow-sm" 
+                          placeholder="The story..." 
+                        />
+                      </div>
+
+                      <div className="pt-2 lg:pt-4">
+                        <button 
+                          onClick={handleUpload} 
+                          className="w-full py-4 lg:py-5 bg-blue-600 text-white rounded-2xl lg:rounded-3xl font-black shadow-xl shadow-blue-500/20 text-xs uppercase tracking-[0.2em] transition-all active:scale-95"
+                        >
+                          Sync {previews.length} Memories
+                        </button>
+                        <button 
+                          onClick={() => { setUploadStep('select'); setPreviews([]); }} 
+                          className="w-full mt-3 py-2 text-gray-400 hover:text-red-500 font-black text-[10px] uppercase tracking-widest transition-colors"
+                        >
+                          Discard
+                        </button>
+                      </div>
                     </div>
-                 </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -570,7 +786,7 @@ export const Gallery: React.FC = () => {
 
         {/* Cinematic Slideshow Overlay - ABSOLUTE FULLSCREEN REVAMP */}
         <AnimatePresence>
-          {isSlideshowActive && images.length > 0 && (
+          {isSlideshowActive && activeSlideshowImages.length > 0 && (
            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -638,7 +854,7 @@ export const Gallery: React.FC = () => {
                       className="relative w-full h-full flex items-center justify-center font-serif text-white/90"
                     >
                         <img
-                          src={images[slideshowIndex].imageUrl}
+                          src={activeSlideshowImages[slideshowIndex].imageUrl}
                           className="max-w-full max-h-full object-contain shadow-[0_0_80px_rgba(0,0,0,0.5)]"
                           alt=""
                         />
@@ -655,24 +871,24 @@ export const Gallery: React.FC = () => {
                     transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
                  >
                     <h4 className="text-white font-heavy text-4xl md:text-7xl tracking-tighter drop-shadow-2xl mb-6 leading-tight">
-                        {images[slideshowIndex].title}
+                        {activeSlideshowImages[slideshowIndex].title}
                     </h4>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3 px-1 pointer-events-none">
                             <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-[10px] font-black text-white/80 overflow-hidden border border-white/10 backdrop-blur-md">
-                                {images[slideshowIndex].uploadedBy?.avatar ? (
-                                  <img src={images[slideshowIndex].uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
+                                {activeSlideshowImages[slideshowIndex].uploadedBy?.avatar ? (
+                                  <img src={activeSlideshowImages[slideshowIndex].uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
                                 ) : (
-                                  images[slideshowIndex].uploadedBy?.name?.charAt(0)
+                                  activeSlideshowImages[slideshowIndex].uploadedBy?.name?.charAt(0)
                                 )}
                             </div>
                             <p className="text-white/60 font-black text-xs uppercase tracking-[0.3em] drop-shadow-md">
-                                {images[slideshowIndex].uploadedBy?.name || 'Unknown Source'}
+                                {activeSlideshowImages[slideshowIndex].uploadedBy?.name || 'Unknown Source'}
                             </p>
                         </div>
                         <div className="px-1">
                             <p className="text-white/30 text-xs font-black uppercase tracking-[0.3em] drop-shadow-md">
-                                {format(new Date(images[slideshowIndex].date || images[slideshowIndex].createdAt), "MMMM yyyy")}
+                                {format(new Date(activeSlideshowImages[slideshowIndex].date || activeSlideshowImages[slideshowIndex].createdAt), "MMMM yyyy")}
                             </p>
                         </div>
                     </div>
