@@ -8,7 +8,7 @@ import type { GalleryImage } from "../types";
 import { format } from "date-fns";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Image as ImageIcon, UploadCloud, CheckCircle, Loader2, Plus, Search, Filter, Trash2, Play, Pause, X, ChevronLeft, ChevronRight, MapPin, Calendar as CalendarIcon, ChevronDown, Share2 } from "lucide-react";
+import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2 } from "lucide-react";
 
 export const Gallery: React.FC = () => {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ export const Gallery: React.FC = () => {
   // Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadStep, setUploadStep] = useState<'select' | 'details' | 'uploading' | 'success'>('select');
-  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+
   const [previews, setPreviews] = useState<{ url: string; file: File; title: string; description: string; location: string; date: string }[]>([]);
   
   // Slideshow State
@@ -126,7 +126,7 @@ export const Gallery: React.FC = () => {
       setTimeout(() => {
         setIsUploadModalOpen(false);
         setUploadStep('select');
-        setFilesToUpload([]);
+
         setPreviews([]);
         fetchImages();
       }, 1500);
@@ -205,7 +205,7 @@ export const Gallery: React.FC = () => {
   // Touch Handlers for Swipe
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [showPauseIcon, setShowPauseIcon] = useState(false);
+
 
   const minSwipeDistance = 50;
 
@@ -415,7 +415,7 @@ export const Gallery: React.FC = () => {
         {/* Modal - Mobile Optimized Detail View */}
         <AnimatePresence>
           {selectedImage && (
-             <Modal isOpen={!!selectedImage} onClose={() => setSelectedImage(null)} title="" size="4xl" noPadding>
+             <Modal isOpen={!!selectedImage} onClose={() => setSelectedImage(null)} title="" size="2xl" noPadding>
                <div className="flex flex-col md:flex-row h-full max-h-[90vh] md:max-h-[80vh] overflow-hidden bg-white dark:bg-black">
                   <div className="flex-1 bg-black flex items-center justify-center p-2 relative">
                       <img src={selectedImage.imageUrl} alt={selectedImage.title} className="max-w-full max-h-full object-contain" />
@@ -476,7 +476,7 @@ export const Gallery: React.FC = () => {
           isOpen={isUploadModalOpen}
           onClose={() => { if (uploadStep !== 'uploading') setIsUploadModalOpen(false); }}
           title="Archive a Moment"
-          size="4xl"
+          size="2xl"
         >
           <div className="min-h-[500px] flex flex-col">
             {uploadStep === 'select' && (
