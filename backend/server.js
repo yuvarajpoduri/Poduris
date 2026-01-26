@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import session from "express-session";
 import MongoStore from "connect-mongo";
@@ -19,7 +19,7 @@ import notificationRoutes from "./routes/notificationRoutes.js"; // New
 import eventRoutes from "./routes/eventRoutes.js"; // Added event routes
 import wishRoutes from "./routes/wishRoutes.js";
 
-dotenv.config();
+
 
 console.log("Loading environment variables...");
 console.log("MONGODB_URI present:", !!process.env.MONGODB_URI);
@@ -80,6 +80,7 @@ app.use(
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI,
       ttl: 14 * 24 * 60 * 60, // 14 days
+      touchAfter: 24 * 3600, // Lazy session update: only update once every 24 hours (unless data changes)
     }),
     cookie: {
       httpOnly: true,

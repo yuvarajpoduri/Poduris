@@ -26,7 +26,6 @@ const navigationItems = [
   { path: '/family', labelKey: 'nav.family', icon: Users },
   { path: '/calendar', labelKey: 'nav.calendar', icon: CalendarIcon },
   { path: '/gallery', labelKey: 'nav.gallery', icon: Images },
-  // Announcements removed
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -113,7 +112,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 />
               </div>
 
-              <span className="text-sm text-gray-600 dark:text-gray-400 hidden xl:block">{user?.name}</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-200 hidden xl:block">
+                  {user?.nickname || user?.name}
+              </span>
+              
+              {!isAdmin() && (
               <Link
                 to="/profile"
                 className="tap-target"
@@ -122,16 +125,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
-                    alt={user.name}
+                    alt={user.nickname || user.name}
                     className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer"
                   />
                 ) : user?.name ? (
                   <div className="w-10 h-10 rounded-full bg-accent-blue/20 hover:bg-accent-blue/30 flex items-center justify-center text-sm font-semibold text-accent-blue border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer">
-                    {user.name.charAt(0).toUpperCase()}
+                    {(user.nickname || user.name).charAt(0).toUpperCase()}
                   </div>
                 ) : null}
               </Link>
-              <LanguageToggle />
+              )}
+              {!isAdmin() && <LanguageToggle />}
               <ThemeToggle />
               <button
                 onClick={handleLogout}
@@ -168,6 +172,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 />
             </div>
             
+            {!isAdmin() && (
             <Link
               to="/profile"
               className="tap-target"
@@ -176,16 +181,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               {user?.avatar ? (
                 <img
                   src={user.avatar}
-                  alt={user.name}
+                  alt={user.nickname || user.name}
                   className="w-10 h-10 rounded-full object-cover border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer"
                 />
               ) : user?.name ? (
                 <div className="w-10 h-10 rounded-full bg-accent-blue/20 hover:bg-accent-blue/30 flex items-center justify-center text-sm font-semibold text-accent-blue border-2 border-accent-blue hover:border-accent-orange transition-colors cursor-pointer">
-                  {user.name.charAt(0).toUpperCase()}
+                  {(user.nickname || user.name).charAt(0).toUpperCase()}
                 </div>
               ) : null}
             </Link>
-            <LanguageToggle />
+            )}
+            {!isAdmin() && <LanguageToggle />}
             <ThemeToggle />
             {/* Replaced Hamburger with Logout */}
             <button
@@ -239,6 +245,32 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
             );
           })}
+          {isAdmin() && (
+            <Link
+              to="/admin"
+              className={`flex flex-col items-center justify-center flex-1 h-full tap-target transition-all duration-200 relative ${
+                isActive('/admin')
+                  ? 'text-accent-blue'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Settings className="w-5 h-5 mb-1" />
+              </motion.div>
+              <span className="text-xs font-medium">{t('nav.admin')}</span>
+              {isActive('/admin') && (
+                <motion.div
+                  layoutId="activeIndicator"
+                  className="absolute bottom-0 left-0 right-0 h-1 bg-accent-blue rounded-t-full"
+                  initial={false}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              )}
+            </Link>
+          )}
         </div>
       </nav>
     </div>

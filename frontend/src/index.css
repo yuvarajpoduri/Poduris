@@ -12,6 +12,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden; /* Prevent horizontal scroll on mobile */
   }
   
   body {
@@ -22,6 +23,7 @@
     line-height: 1.6;
     font-size: 16px;
     transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -56,7 +58,7 @@
   }
 
   button {
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-blue dark:focus:ring-offset-gray-900;
+    @apply focus:outline-none focus:ring-0 active:outline-none;
   }
 
   input, textarea, select {
@@ -209,6 +211,21 @@
     animation: slide-up 0.4s ease-out;
   }
 
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+  }
+
   .animate-scale-in {
     animation: scale-in 0.2s ease-out;
   }
@@ -235,5 +252,10 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Prevent zoom on inputs for iOS */
+  .input-ios-fix {
+    font-size: 16px !important;
   }
 }

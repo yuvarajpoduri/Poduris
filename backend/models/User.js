@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true
   },
+  nickname: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   bio: {
     type: String,
     default: '',

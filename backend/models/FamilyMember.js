@@ -13,6 +13,11 @@ const familyMemberSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true
   },
+  nickname: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   email: {
     type: String,
     unique: true,

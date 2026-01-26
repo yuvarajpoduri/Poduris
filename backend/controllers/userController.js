@@ -163,26 +163,38 @@ export const updateMyProfile = async (req, res, next) => {
     const user = await User.findById(userId);
     if (!user) {
       return res
-        .status(404)
+        .status(401)
         .json({ success: false, message: "User not found" });
     }
     
-    // Only approved users can update their profile
+    // Only approved users can update their profile (Admins are usually approved or exempt, but logic holds)
     if (user.status !== "approved") {
       return res
         .status(403)
         .json({ success: false, message: "Only approved users can update their profile" });
     }
     
-    // User must be linked to a FamilyMember
+    // If not linked to a family member, only allow updating User fields directly
     if (!user.linkedFamilyMemberId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User is not linked to a family member" });
+       const allowedUserFields = ['name', 'nickname', 'avatar', 'bio', 'location', 'occupation', 'birthDate', 'gender'];
+       const userUpdateData = {};
+       
+       allowedUserFields.forEach((field) => {
+         if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+           userUpdateData[field] = req.body[field];
+         }
+       });
+
+       const updatedUser = await User.findByIdAndUpdate(userId, userUpdateData, {
+          new: true,
+          runValidators: true
+       }).select("-password");
+
+       return res.status(200).json({ success: true, data: updatedUser });
     }
     
     // Update the linked FamilyMember instead of User
-    const allowedFields = ['name', 'avatar', 'bio', 'location', 'occupation', 'birthDate', 'gender'];
+    const allowedFields = ['name', 'nickname', 'avatar', 'bio', 'location', 'occupation', 'birthDate', 'gender'];
     const updateData = {};
 
     allowedFields.forEach((field) => {
@@ -203,8 +215,11 @@ export const updateMyProfile = async (req, res, next) => {
         .json({ success: false, message: "Linked family member not found" });
     }
     
-    // Also update user name to match FamilyMember name
-    await User.findByIdAndUpdate(userId, { name: familyMember.name }, { new: true });
+    // Also update user name and nickname to match FamilyMember
+    await User.findByIdAndUpdate(userId, { 
+      name: familyMember.name,
+      nickname: familyMember.nickname
+    }, { new: true });
 
     res.status(200).json({ success: true, data: familyMember });
   } catch (error) {

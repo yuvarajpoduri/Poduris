@@ -36,7 +36,7 @@ export const Gallery: React.FC = () => {
       setImages(data);
     } catch (err: any) {
       console.error(err);
-      showToast("Failed to load gallery", "error");
+      showToast("Failed to load memories", "error");
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export const Gallery: React.FC = () => {
         cloudinaryId: uploadResult.cloudinaryId,
       });
 
-      showToast("Photo uploaded successfully!", "success");
+      showToast("Memory preserved successfully!", "success");
       setUploadStep('success');
       
       // Reset after delay
@@ -95,200 +95,262 @@ export const Gallery: React.FC = () => {
     }
   };
 
-  const canUpload = user && (isAdmin() || user.status === "active");
+  // Allow any authenticated user to upload
+  const canUpload = !!user;
 
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
-          <div>
-            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500 mb-2">
-              {t("gallery.title")}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 max-w-lg">
-              Capture and share precious moments with your family. 
-              Only approved members can add to this collection.
-            </p>
-          </div>
-          
-          {canUpload && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsUploadModalOpen(true)}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl shadow-lg shadow-blue-500/30 flex items-center gap-2 font-bold hover:shadow-blue-500/50 transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              <span>{t("gallery.upload")}</span>
-            </motion.button>
-          )}
+      <div className="space-y-12">
+        {/* Cinematic Header */}
+        {/* Clean Modern Header */}
+        <div className="flex flex-col md:flex-row justify-between items-end gap-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+           <div>
+              <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white mb-2">
+                {t("gallery.title")}
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 text-lg max-w-xl">
+                 A visual history of our shared moments.
+              </p>
+           </div>
+           
+           {canUpload && (
+             <motion.button
+               whileHover={{ scale: 1.02 }}
+               whileTap={{ scale: 0.98 }}
+               onClick={() => setIsUploadModalOpen(true)}
+               className="btn-primary flex items-center gap-2 shadow-lg shadow-blue-500/20"
+             >
+               <Plus className="w-5 h-5" />
+               <span>{t("gallery.upload")}</span>
+             </motion.button>
+           )}
         </div>
 
-        {/* Gallery Grid */}
+        {/* Premium Gallery Grid */}
         {loading ? (
-           <div className="flex justify-center items-center h-64">
-             <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+           <div className="flex flex-col items-center justify-center h-96 gap-4">
+             <Loader2 className="w-12 h-12 animate-spin text-gray-400" />
+             <p className="text-gray-500 font-medium animate-pulse">Summoning memories...</p>
            </div>
         ) : images.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
             <AnimatePresence>
               {images.map((image, index) => (
                 <motion.div
-                  layoutId={`image-${image._id}`}
+                  layoutId={`image-card-${image._id}`}
                   key={image._id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.5, ease: "easeOut" }}
                   onClick={() => setSelectedImage(image)}
-                  className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800 shadow-md hover:shadow-xl transition-all"
+                  className="group relative aspect-[4/5] cursor-pointer rounded-2xl overflow-hidden shadow-soft hover:shadow-2xl transition-all duration-500 bg-gray-100 dark:bg-gray-800"
                 >
-                  <img
+                  <motion.img
+                    layoutId={`image-${image._id}`}
                     src={image.imageUrl}
                     alt={image.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="h-full w-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                    <p className="text-white font-bold truncate text-sm">{image.title}</p>
-                    <p className="text-white/80 text-xs truncate">by {image.uploadedBy?.name}</p>
+                  
+                  {/* Permanent Overlay for Mobile/All */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-5 pointer-events-none">
+                    <div className="transform transition-transform duration-500">
+                      <h3 className="text-white text-base sm:text-lg font-bold line-clamp-2 leading-tight mb-2 drop-shadow-md">
+                        {image.title}
+                      </h3>
+                      <div className="flex items-center gap-2 text-white/90 text-sm">
+                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold ring-1 ring-white/30 backdrop-blur-sm uppercase">
+                            {image.uploadedBy?.name?.charAt(0) || "U"}
+                        </div>
+                        <span className="font-medium shadow-black/50 drop-shadow-md text-xs sm:text-sm">{image.uploadedBy?.name || "Unknown"}</span>
+                      </div>
+                      <p className="text-white/60 text-[10px] mt-2 uppercase tracking-wider font-semibold">
+                        {format(new Date(image.createdAt), "MMM d, yyyy")}
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-24 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-center">
-            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <ImageIcon className="w-10 h-10 text-gray-400" />
+          <div className="flex flex-col items-center justify-center py-32 bg-gray-50 dark:bg-gray-900/30 rounded-3xl border border-dashed border-gray-300 dark:border-gray-800 text-center">
+            <div className="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-soft">
+              <ImageIcon className="w-12 h-12 text-gray-300 dark:text-gray-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t("gallery.noImages")}</h3>
-            <p className="text-gray-500 max-w-sm mx-auto mb-6">Start building your family album by uploading some photos!</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("gallery.noImages")}</h3>
+            <p className="text-gray-500 max-w-md mx-auto mb-8 leading-relaxed">The archive is waiting for your stories. Be the first to preserve a moment in time.</p>
             {canUpload && (
               <button 
                 onClick={() => setIsUploadModalOpen(true)}
-                className="text-blue-600 font-semibold hover:underline"
+                className="btn-primary flex items-center gap-2 px-8 py-3"
               >
-                Upload a Photo
+                <Plus className="w-5 h-5" />
+                <span>Upload First Photo</span>
               </button>
             )}
           </div>
         )}
 
-        {/* Image Detail Modal */}
-        <Modal
-          isOpen={!!selectedImage}
-          onClose={() => setSelectedImage(null)}
-          title={selectedImage?.title || ""}
-          size="xl"
-        >
+        {/* Immersive Image Detail Modal */}
+        <AnimatePresence>
           {selectedImage && (
-            <div className="space-y-4">
-              <div className="bg-black/5 rounded-xl overflow-hidden max-h-[70vh] flex items-center justify-center">
-                <img src={selectedImage.imageUrl} alt={selectedImage.title} className="max-w-full max-h-full object-contain" />
-              </div>
-              
-              <div className="flex justify-between items-start gap-4">
-                <div>
-                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{selectedImage.title}</h3>
-                   {selectedImage.description && (
-                     <p className="text-gray-600 dark:text-gray-300">{selectedImage.description}</p>
-                   )}
-                </div>
-                <div className="text-right text-sm text-gray-500">
-                  <p>Uploaded by <span className="font-semibold text-gray-900 dark:text-white">{selectedImage.uploadedBy?.name}</span></p>
-                  <p>{format(new Date(selectedImage.createdAt), "PPP")}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
+             <Modal
+               isOpen={!!selectedImage}
+               onClose={() => setSelectedImage(null)}
+               title="" // Clean title
+               size="2xl"
+               noPadding // Custom content needs full width
+             >
+               <div className="relative bg-black group/modal">
+                 <div className="relative w-full aspect-auto md:h-[85vh] bg-neutral-900/50 flex flex-col md:flex-row">
+                    
+                    {/* Image Section */}
+                    <div className="flex-1 relative flex items-center justify-center p-4 md:p-12 overflow-hidden bg-black/40 backdrop-blur-sm">
+                        <motion.img 
+                            layoutId={`image-${selectedImage._id}`}
+                            src={selectedImage.imageUrl} 
+                            alt={selectedImage.title} 
+                            className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+                        />
+                    </div>
 
-        {/* Upload Modal */}
+                    {/* Sidebar Info Section */}
+                    <div className="w-full md:w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 p-8 flex flex-col h-full overflow-y-auto">
+                       <div className="mb-auto">
+                           <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
+                               {selectedImage.title}
+                           </h3>
+                           
+                           {selectedImage.description && (
+                             <div className="relative pl-4 border-l-2 border-accent-blue/50 mb-8">
+                                <p className="text-gray-600 dark:text-gray-300 italic leading-relaxed text-lg">
+                                  "{selectedImage.description}"
+                                </p>
+                             </div>
+                           )}
+                           
+                           <div className="flex items-center gap-4 py-6 border-t border-gray-100 dark:border-gray-800">
+                               <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                                   {selectedImage.uploadedBy?.name?.charAt(0)}
+                               </div>
+                               <div>
+                                   <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Captured By</p>
+                                   <p className="font-bold text-gray-900 dark:text-white">{selectedImage.uploadedBy?.name}</p>
+                               </div>
+                           </div>
+                       </div>
+                       
+                       <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-400 font-mono">
+                           <p>Preserved on {format(new Date(selectedImage.createdAt), "PPP")}</p>
+                       </div>
+                    </div>
+                 </div>
+               </div>
+             </Modal>
+          )}
+        </AnimatePresence>
+
+        {/* Polished Upload Modal */}
         <Modal
           isOpen={isUploadModalOpen}
           onClose={() => { if (uploadStep !== 'uploading') setIsUploadModalOpen(false); }}
           title={t("gallery.upload")}
           size="lg"
         >
-          <div className="min-h-[300px] flex flex-col">
+          <div className="min-h-[400px] flex flex-col p-2">
             {uploadStep === 'select' && (
-              <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors p-8 relative">
+              <div className="flex-1 flex flex-col items-center justify-center border-3 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-3xl bg-gray-50 dark:bg-gray-800/30 hover:bg-white dark:hover:bg-gray-800 transition-all duration-300 p-12 relative group cursor-pointer">
                 <input 
                   type="file" 
                   accept="image/*" 
                   onChange={handleFileSelect} 
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 />
-                <UploadCloud className="w-16 h-16 text-blue-500 mb-4" />
-                <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300">Click to upload photo</h3>
-                <p className="text-sm text-gray-500 mt-2">Maximum file size 10MB</p>
+                <div className="w-24 h-24 bg-white dark:bg-gray-700 rounded-full shadow-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <UploadCloud className="w-10 h-10 text-blue-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Drop memory here</h3>
+                <p className="text-gray-500 text-center max-w-xs">Click or drag a photo to begin preserving it forever.</p>
+                <div className="mt-8 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-full text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Max 10MB
+                </div>
               </div>
             )}
 
             {uploadStep === 'details' && previewUrl && (
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="w-1/3 aspect-square rounded-lg overflow-hidden bg-gray-100 border">
-                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
-                      <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="input w-full"
-                        placeholder="E.g., Summer Vacation 2024"
-                        autoFocus
-                      />
+              <div className="flex flex-col h-full gap-6">
+                 <div className="flex gap-6 items-start">
+                    <div className="w-1/3 aspect-[3/4] rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-700 bg-black">
+                       <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="input w-full resize-none"
-                        rows={3}
-                        placeholder="Add some details..."
-                      />
+                    <div className="flex-1 space-y-6">
+                       <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Title of Memory *</label>
+                          <input
+                            type="text"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none focus:ring-2 focus:ring-blue-500 font-medium text-lg"
+                            placeholder="E.g., The Big Family Reunion"
+                            autoFocus
+                          />
+                       </div>
+                       <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">The Story</label>
+                          <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[120px]"
+                            placeholder="Tell us what makes this moment special..."
+                          />
+                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-                  <button 
-                    onClick={() => { setUploadStep('select'); setFileToUpload(null); }}
-                    className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleUpload}
-                    disabled={!formData.title.trim()}
-                    className="btn-primary"
-                  >
-                    Upload Photo
-                  </button>
-                </div>
+                 </div>
+
+                 <div className="mt-auto flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+                   <button 
+                     onClick={() => { setUploadStep('select'); setFileToUpload(null); }}
+                     className="px-6 py-3 rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 font-medium transition-colors"
+                   >
+                     Cancel
+                   </button>
+                   <button
+                     onClick={handleUpload}
+                     disabled={!formData.title.trim()}
+                     className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                   >
+                     Preserve Memory
+                   </button>
+                 </div>
               </div>
             )}
 
             {uploadStep === 'uploading' && (
-              <div className="flex-1 flex flex-col items-center justify-center">
-                <Loader2 className="w-16 h-16 text-blue-500 animate-spin mb-4" />
-                <h3 className="text-xl font-bold">Uploading...</h3>
-                <p className="text-gray-500">Please wait while we save your memory.</p>
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <div className="relative">
+                    <div className="w-24 h-24 border-4 border-blue-100 dark:border-blue-900/30 rounded-full animate-ping absolute inset-0"></div>
+                    <div className="w-24 h-24 bg-white dark:bg-gray-800 rounded-full shadow-xl flex items-center justify-center relative z-10">
+                        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Uploading...</h3>
+                    <p className="text-gray-500">Writing this moment into history.</p>
+                </div>
               </div>
             )}
 
             {uploadStep === 'success' && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
-                  <CheckCircle className="w-8 h-8" />
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-24 h-24 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-2 animate-bounce">
+                  <CheckCircle className="w-12 h-12 text-green-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-green-600 mb-2">Success!</h3>
-                <p className="text-gray-600">Your photo has been added to the gallery.</p>
+                <div>
+                   <h3 className="text-3xl font-black text-green-600 dark:text-green-500 mb-2">Perfect.</h3>
+                   <p className="text-gray-600 dark:text-gray-300 text-lg">Your memory has been safely stored.</p>
+                </div>
               </div>
             )}
           </div>

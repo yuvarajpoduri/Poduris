@@ -9,6 +9,7 @@ interface AuthContextType {
   register: (email: string, password: string, familyMemberId: number) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: () => boolean;
+  refetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +17,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refetchUser = async () => {
+    try {
+      const userData = await authAPI.getMe();
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      // If refetch fails, we might be logged out or server error.
+      // For safety, don't auto-logout on simple refetch unless 401.
+      console.error("Failed to refetch user", error);
+    }
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -58,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, refetchUser }}>
       {children}
     </AuthContext.Provider>
   );

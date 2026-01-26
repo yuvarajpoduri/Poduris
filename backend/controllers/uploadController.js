@@ -22,10 +22,25 @@ const upload = multer({
 // @desc    Upload image to Cloudinary
 // @route   POST /api/upload
 // @access  Private/Admin
+// @desc    Upload image to Cloudinary
+// @route   POST /api/upload
+// @access  Private/Admin
 export const uploadImage = async (req, res, next) => {
+  console.log('Upload Endpoint Hit:', {
+    hasFile: !!req.file,
+    contentType: req.headers['content-type'],
+    bodyKeys: Object.keys(req.body || {}),
+    fileDetails: req.file ? {
+      fieldname: req.file.fieldname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : 'No File'
+  });
+
   try {
     // Check Cloudinary configuration
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('Cloudinary config missing');
       return res.status(500).json({
         success: false,
         message: 'Cloudinary is not configured. Please contact the administrator.'
@@ -33,9 +48,10 @@ export const uploadImage = async (req, res, next) => {
     }
 
     if (!req.file) {
+      console.error('No file in request');
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded'
+        message: 'No file uploaded. Please ensure you selected a valid image.'
       });
     }
 
@@ -49,7 +65,7 @@ export const uploadImage = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Upload error in controller:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'Failed to upload image. Please try again.'
@@ -57,6 +73,20 @@ export const uploadImage = async (req, res, next) => {
   }
 };
 
-// Export multer middleware
-export const uploadMiddleware = upload.single('image');
+// Export multer middleware with error handling wrapper
+export const uploadMiddleware = (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      console.error('Multer Middleware Error:', err);
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ success: false, message: 'File too large. Max size is 10MB.' });
+        }
+        return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
 

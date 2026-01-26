@@ -59,7 +59,7 @@ export const CalendarCell: React.FC<Props> = ({
 
         {/* Eye Icon for Preview */}
         {hasAnyEvent && (
-          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-1 right-1 transition-opacity">
              <button 
                 onClick={(e) => {
                     e.stopPropagation();

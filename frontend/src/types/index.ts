@@ -2,6 +2,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  nickname?: string;
   role: 'admin' | 'family_member';
   status: 'active' | 'inactive' | 'pending';
   avatar?: string;
@@ -23,6 +24,7 @@ export interface FamilyMember {
   _id: string;
   id: number;
   name: string;
+  nickname?: string;
   email?: string;
   birthDate: string;
   anniversaryDate?: string | null;

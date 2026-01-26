@@ -13,14 +13,14 @@ export const getChats = async (req, res, next) => {
     };
 
     const chats = await Chat.find(query)
-      .populate('senderFamilyMemberId', 'name email avatar')
-      .populate('receiverFamilyMemberId', 'name email avatar')
+      .populate('senderFamilyMemberId', 'name nickname email avatar')
+      .populate('receiverFamilyMemberId', 'name nickname email avatar')
       .populate({
         path: 'replyTo',
         select: 'message senderFamilyMemberId',
         populate: {
           path: 'senderFamilyMemberId',
-          select: 'name avatar'
+          select: 'name nickname avatar'
         }
       })
       // Oldest first; UI scrolls to bottom so most recent is visible when opened
@@ -108,14 +108,14 @@ export const sendMessage = async (req, res, next) => {
     }
 
     const chat = await Chat.create(chatData);
-    await chat.populate('senderFamilyMemberId', 'name email avatar');
+    await chat.populate('senderFamilyMemberId', 'name nickname email avatar');
     if (chat.replyTo) {
       await chat.populate({
         path: 'replyTo',
         select: 'message senderFamilyMemberId',
         populate: {
           path: 'senderFamilyMemberId',
-          select: 'name avatar'
+          select: 'name nickname avatar'
         }
       });
     }

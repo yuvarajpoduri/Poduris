@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { chatAPI, familyMembersAPI } from "../utils/api";
-import type { ChatMessage } from "../types"; // Removed unused FamilyMember
+import type { ChatMessage } from "../types";
 import {
   MessageCircle,
   X,
@@ -93,7 +93,6 @@ export const Chat: React.FC = () => {
     return null;
   }
 
-  // Allow all authenticated users to chat, including admins
   const canSendMessages = true; 
 
   const chatVariants = {
@@ -121,11 +120,14 @@ export const Chat: React.FC = () => {
     exit: { y: "100%", transition: { duration: 0.3, ease: "easeInOut" } },
   };
 
+  // Helper to get display name
+  const getDisplayName = (sender: any) => sender?.nickname || sender?.name || "Unknown";
+
   return (
     <>
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 z-40 bg-accent-blue text-white p-4 rounded-full shadow-2xl flex items-center justify-center"
+        className="fixed bottom-24 right-6 z-40 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center border-2 border-white/20"
         style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -142,71 +144,71 @@ export const Chat: React.FC = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 md:inset-auto md:bottom-28 md:right-6 md:w-[400px] md:h-[600px] md:rounded-3xl md:shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:border md:border-gray-200 md:dark:border-gray-700 overflow-hidden"
+            className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 md:inset-auto md:bottom-28 md:right-6 md:w-[400px] md:h-[600px] md:rounded-[32px] md:shadow-[0_40px_80px_rgba(0,0,0,0.3)] md:border md:border-gray-200 md:dark:border-gray-800 overflow-hidden backdrop-blur-xl"
           >
-            {/* Header ... */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-10">
-               {/* ... header content ... */}
-               <div className="flex items-center space-x-3">
-                 {/* ... */}
-                 <div className="w-10 h-10 rounded-full bg-accent-blue/10 flex items-center justify-center">
-                   <MessageCircle className="w-5 h-5 text-accent-blue" />
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md sticky top-0 z-10 transition-colors">
+               <div className="flex items-center space-x-4">
+                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                   <MessageCircle className="w-5 h-5 text-white" />
                  </div>
                  <div>
-                   <h3 className="font-bold text-gray-900 dark:text-white text-base">
-                     {t("chat.title") || "Family Chat"}
+                   <h3 className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">
+                     {t("chat.title") || "Family Room"}
                    </h3>
-                   <div className="flex items-center space-x-1">
-                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                     <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
-                       Online
+                   <div className="flex items-center space-x-1.5">
+                     <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                     </span>
+                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                       Live
                      </span>
                    </div>
                  </div>
                </div>
                <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                className="p-2.5 bg-gray-50 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 rounded-full transition-all duration-300"
                 aria-label="Close chat"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/50 scroll-smooth">
-               {/* ... messages list ... */}
-            {/* Same loading logic */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/50 dark:bg-gray-900 scroll-smooth overscroll-contain">
               {loading ? (
                 <div className="flex justify-center items-center h-full">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-accent-blue border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-indigo-500 font-bold uppercase tracking-widest animate-pulse">
                       {t("chat.loading")}
                     </span>
                   </div>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full opacity-40">
-                  <MessageCircle className="w-12 h-12 mb-2" />
-                  <p className="text-sm font-medium">{t("chat.empty")}</p>
+                <div className="flex flex-col items-center justify-center h-full opacity-30 select-none">
+                  <MessageCircle className="w-16 h-16 mb-4 text-gray-400" />
+                  <p className="font-medium text-gray-500">No messages yet. Say hello!</p>
                 </div>
               ) : (
                 messages.map((message, index) => {
                   const senderId =
                     message.sender?._id || (message.sender as any)?._id;
                   const isOwnMessage = senderId === user?.id;
+                  const displayName = getDisplayName(message.sender);
 
                   return (
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: index * 0.02 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
                       key={message._id}
-                      className={`flex w-full gap-3 ${
+                      className={`flex w-full gap-3 group ${
                         isOwnMessage ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
-                      {/* Avatar Button */}
+                      {/* Avatar */}
                       <button
                         onClick={async () => {
                           if (message.sender?._id) {
@@ -216,95 +218,107 @@ export const Chat: React.FC = () => {
                               );
                               setSelectedMember({ ...member });
                             } catch (error) {
-                              setSelectedMember(message.sender);
+                              // Fallback to sender data if available
+                              const senderData = message.sender || {};
+                              setSelectedMember({ 
+                                ...senderData, 
+                                name: getDisplayName(senderData) 
+                              });
                             }
                           }
                         }}
-                        className="flex-shrink-0 active:scale-90 transition-transform"
+                        className="flex-shrink-0 self-end mb-1 transition-transform active:scale-95"
                       >
                        {message.sender?.avatar ? (
                           <img
                             src={message.sender.avatar}
-                            className="w-9 h-9 rounded-2xl object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm"
-                            alt=""
+                            className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow-md"
+                            alt={displayName}
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-2xl bg-accent-blue text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                            {message.sender?.name?.charAt(0).toUpperCase() ||
-                              "?"}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-md text-white
+                             ${isOwnMessage ? 'bg-indigo-500' : 'bg-gray-400 dark:bg-gray-600'}
+                          `}>
+                            {displayName.charAt(0).toUpperCase()}
                           </div>
                         )}
                       </button>
 
                       <div
-                        className={`flex flex-col max-w-[80%] ${
+                        className={`flex flex-col max-w-[75%] ${
                           isOwnMessage ? "items-end" : "items-start"
                         }`}
                       >
                         {!isOwnMessage && (
-                          <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1 ml-1">
-                            {message.sender?.name}
+                          <span className="text-[10px] font-bold text-gray-400 mb-1 ml-1 uppercase tracking-wide">
+                            {displayName}
                           </span>
                         )}
+                        
                         <div
-                          className={`relative group px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
-                            isOwnMessage
-                              ? "bg-accent-blue text-white rounded-tr-none"
-                              : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700"
-                          }`}
+                          className={`relative px-5 py-3 shadow-sm text-[15px] leading-relaxed break-words
+                            ${isOwnMessage 
+                                ? "bg-gradient-to-tr from-indigo-600 to-violet-600 text-white rounded-[20px] rounded-br-none" 
+                                : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-[20px] rounded-bl-none"
+                            }
+                          `}
                         >
-                           {/* ... reply content ... */}
                           {message.replyTo && (
                             <div
-                              className={`mb-2 p-2 rounded-lg border-l-2 text-[11px] opacity-80 ${
-                                isOwnMessage
-                                  ? "bg-black/10 border-white"
-                                  : "bg-gray-100 dark:bg-gray-700 border-accent-blue"
-                              }`}
+                              className={`mb-2 p-2 rounded-lg text-xs border-l-2 bg-black/5 dark:bg-white/5 
+                                ${isOwnMessage ? "border-white/50 text-white/90" : "border-indigo-500 text-gray-500 dark:text-gray-400"}
+                              `}
                             >
-                              <p className="font-bold truncate">
-                                {message.replyTo.sender?.name}
+                              <p className="font-bold flex items-center gap-1">
+                                <Reply className="w-3 h-3" />
+                                {getDisplayName(message.replyTo.sender)}
                               </p>
-                              <p className="truncate italic">
+                              <p className="truncate opacity-80 mt-0.5 font-medium">
                                 {message.replyTo.message}
                               </p>
                             </div>
                           )}
-                          <p className="leading-relaxed whitespace-pre-wrap break-words">
-                            {message.message}
-                          </p>
-                          <div
-                            className={`flex items-center gap-2 mt-1 opacity-50 text-[10px] ${
-                              isOwnMessage ? "justify-end" : "justify-start"
-                            }`}
-                          >
-                            <span>
-                              {message.createdAt
-                                ? format(new Date(message.createdAt), "HH:mm")
-                                : ""}
-                            </span>
-                             {/* CHANGED: Removed opacity-0 group-hover:opacity-100 */}
-                            <div className="flex gap-1 transition-opacity">
-                              {isOwnMessage || user.role === "admin" ? (
-                                <button
-                                  onClick={() =>
-                                    handleDeleteMessage(message._id)
-                                  }
-                                  className="hover:text-red-500"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              ) : null}
-                              {!isOwnMessage && canSendMessages && (
-                                <button
-                                  onClick={() => setReplyingTo(message)}
-                                  className="hover:text-accent-blue"
-                                >
-                                  <Reply className="w-3 h-3" />
-                                </button>
-                              )}
+                          
+                          {message.message}
+                          
+                            <div
+                              className={`flex items-center gap-3 mt-1 px-1
+                                ${isOwnMessage ? "flex-row-reverse" : "flex-row"}
+                              `}
+                            >
+                              <span className={`text-[10px] font-bold opacity-60 ${isOwnMessage ? "text-indigo-100" : "text-gray-400"}`}>
+                                {message.createdAt
+                                  ? format(new Date(message.createdAt), "h:mm a")
+                                  : ""}
+                              </span>
+                              
+                              {/* Actions */}
+                              <div className={`flex gap-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity items-center`}>
+                                {isOwnMessage || user.role === "admin" ? (
+                                  <button
+                                    onClick={() => handleDeleteMessage(message._id)}
+                                    className={`p-1 rounded-full transition-colors ${
+                                        isOwnMessage 
+                                            ? "text-red-200 hover:bg-white/20 hover:text-white" 
+                                            : "text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    }`}
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : null}
+                                
+                                {!isOwnMessage && canSendMessages && (
+                                  <button
+                                    onClick={() => setReplyingTo(message)}
+                                    className="p-1 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors"
+                                    title="Reply"
+                                  >
+                                    <Reply className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -314,6 +328,7 @@ export const Chat: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Selected Member Modal */} 
             <AnimatePresence>
               {selectedMember && (
                 <motion.div
@@ -321,102 +336,70 @@ export const Chat: React.FC = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setSelectedMember(null)}
-                  className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+                  className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/70 backdrop-blur-md"
                 >
                   <motion.div
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 20 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white dark:bg-gray-800 rounded-[32px] p-8 shadow-2xl w-full max-w-sm relative"
+                    className="bg-white dark:bg-gray-800 rounded-[32px] p-8 shadow-2xl w-full max-w-sm relative overflow-hidden"
                   >
-                    <button
+                     <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10"></div>
+                     <button
                       onClick={() => setSelectedMember(null)}
-                      className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      className="absolute top-6 right-6 p-2 rounded-full bg-white/50 hover:bg-white dark:bg-black/20 dark:hover:bg-black/40 transition-colors z-10"
                     >
-                      <X className="w-5 h-5 text-gray-400" />
+                      <X className="w-5 h-5 text-gray-500 dark:text-gray-300" />
                     </button>
-                    <div className="flex flex-col items-center">
-                      <div className="relative mb-6">
-                        {selectedMember.avatar ? (
-                          <img
-                            src={selectedMember.avatar}
-                            className="w-28 h-28 rounded-[32px] object-cover shadow-xl ring-4 ring-accent-blue/10"
-                            alt=""
-                          />
-                        ) : (
-                          <div className="w-28 h-28 rounded-[32px] bg-accent-blue/10 flex items-center justify-center shadow-xl">
-                            <UserIcon className="w-12 h-12 text-accent-blue" />
-                          </div>
-                        )}
-                        <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white dark:border-gray-800" />
-                      </div>
-                      <h4 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
-                        {selectedMember.name}
-                      </h4>
-                      <p className="text-accent-blue text-sm font-bold uppercase tracking-widest mb-6">
-                        Family Member
-                      </p>
 
-                      <div className="w-full space-y-3">
-                        {selectedMember.location && (
-                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
-                            <span className="text-xs font-bold text-gray-400 uppercase">
-                              Location
-                            </span>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                              {selectedMember.location}
-                            </span>
-                          </div>
-                        )}
-                        {selectedMember.birthDate && (
-                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
-                            <span className="text-xs font-bold text-gray-400 uppercase">
-                              Birthday
-                            </span>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                              {format(
-                                new Date(selectedMember.birthDate),
-                                "MMM dd, yyyy"
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => setSelectedMember(null)}
-                        className="w-full mt-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95"
-                      >
-                        {t("common.close")}
-                      </button>
+                    <div className="relative flex flex-col items-center z-10">
+                        <div className="w-28 h-28 rounded-full p-1 bg-white dark:bg-gray-700 shadow-xl ring-2 ring-gray-100 dark:ring-gray-600 mb-4">
+                           {selectedMember.avatar ? (
+                                <img src={selectedMember.avatar} className="w-full h-full rounded-full object-cover" />
+                           ) : (
+                                <div className="w-full h-full rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-3xl font-black">
+                                  {selectedMember.name?.charAt(0)}
+                                </div>
+                           )}
+                        </div>
+                        <h4 className="text-2xl font-black text-center text-gray-900 dark:text-white">{selectedMember.name}</h4>
+                        {selectedMember.nickname && <p className="text-indigo-500 font-bold mb-4">"{selectedMember.nickname}"</p>}
+                        
+                        <div className="w-full space-y-3 mt-4">
+                             <div className="flex gap-2 justify-center">
+                                 {selectedMember.location && <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-500">{selectedMember.location}</span>}
+                                 {selectedMember.occupation && <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-bold text-gray-500">{selectedMember.occupation}</span>}
+                             </div>
+                        </div>
                     </div>
                   </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+            {/* Input Area */}
+            <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] backdrop-blur-md">
               <AnimatePresence>
                 {replyingTo && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="mb-3 flex items-center justify-between bg-accent-blue/5 dark:bg-accent-blue/10 p-3 rounded-xl border-l-4 border-accent-blue"
+                    className="mb-3 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-2xl border border-indigo-100 dark:border-indigo-500/30"
                   >
-                    <div className="overflow-hidden">
-                      <p className="text-[10px] font-bold text-accent-blue uppercase tracking-tight">
-                        Replying to {replyingTo.sender?.name}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {replyingTo.message}
-                      </p>
-                    </div>
+                     <div className="flex items-center gap-3 overflow-hidden">
+                        <Reply className="w-4 h-4 text-indigo-500 shrink-0" />
+                        <div className="truncate">
+                           <span className="text-[10px] font-bold text-indigo-500 uppercase block">Replying to {getDisplayName(replyingTo.sender)}</span>
+                           <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">{replyingTo.message}</span>
+                        </div>
+                     </div>
                     <button
                       onClick={() => setReplyingTo(null)}
-                      className="p-1.5 hover:bg-accent-blue/10 rounded-full transition-colors"
+                      className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-colors"
                     >
-                      <X className="w-4 h-4 text-accent-blue" />
+                      <X className="w-4 h-4" />
                     </button>
                   </motion.div>
                 )}
@@ -425,28 +408,45 @@ export const Chat: React.FC = () => {
               {canSendMessages ? (
                 <form
                   onSubmit={handleSendMessage}
-                  className="flex items-center gap-2"
+                  className="flex items-end gap-2"
                 >
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder={t("chat.placeholder") || "Message..."}
-                    className="flex-1 px-5 py-3 bg-gray-100 dark:bg-gray-900 border-none rounded-2xl text-sm focus:ring-2 focus:ring-accent-blue/20 dark:text-white placeholder:text-gray-400 font-medium transition-all"
-                  />
+                  <div className="flex-1 relative">
+                      <textarea
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if(e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage(e);
+                            }
+                        }}
+                        rows={1}
+                        placeholder={t("chat.placeholder") || "Type a message..."}
+                        className="w-full pl-5 pr-12 py-3.5 bg-gray-100 dark:bg-gray-800 border-2 border-transparent focus:border-indigo-500/50 focus:bg-white dark:focus:bg-gray-900 rounded-3xl text-sm focus:ring-0 text-gray-900 dark:text-white placeholder:text-gray-400 font-medium transition-all resize-none scrollbar-hide"
+                        style={{ minHeight: '48px', maxHeight: '100px' }} 
+                      />
+                      <button 
+                        type="button" 
+                        className="absolute right-3 bottom-3 p-1.5 text-gray-400 hover:text-indigo-500 transition-colors"
+                        title="Add attachment (Coming soon)"
+                      >
+                         <span className="text-lg leading-none">+</span>
+                      </button>
+                  </div>
+                  
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     type="submit"
                     disabled={!messageText.trim()}
-                    className="p-3.5 bg-accent-blue text-white rounded-2xl shadow-lg shadow-accent-blue/30 disabled:opacity-40 disabled:shadow-none transition-all flex items-center justify-center"
+                    className="p-3.5 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/30 disabled:opacity-40 disabled:shadow-none transition-all flex items-center justify-center shrink-0 mb-0.5"
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-5 h-5 ml-0.5" />
                   </motion.button>
                 </form>
               ) : (
                 <div className="py-2 text-center">
-                  <p className="text-[11px] font-bold text-yellow-600 dark:text-yellow-500 uppercase tracking-widest bg-yellow-50 dark:bg-yellow-900/20 py-2 rounded-xl border border-yellow-100 dark:border-yellow-900/30">
-                    {t("chat.adminCannotSend") || "ADMINS CANNOT SEND MESSAGES"}
+                  <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 py-3 rounded-xl">
+                    {t("chat.adminCannotSend") || "Read Only Mode"}
                   </p>
                 </div>
               )}

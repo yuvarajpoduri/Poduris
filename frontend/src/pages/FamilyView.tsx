@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
+import { StaggerContainer } from '../components/Reveal';
 import { familyMembersAPI } from '../utils/api';
 import type { FamilyMember, FamilyMemberWithRelations } from '../types';
 import { format } from 'date-fns';
@@ -16,6 +17,7 @@ export const FamilyView: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedGeneration, setSelectedGeneration] = useState<number | null>(null);
   const [generations, setGenerations] = useState<number[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -54,9 +56,14 @@ export const FamilyView: React.FC = () => {
     }
   };
 
-  const filteredMembers = selectedGeneration !== null
+  const filteredMembers = (selectedGeneration !== null
     ? members.filter(m => m.generation === selectedGeneration)
-    : members;
+    : members).sort((a, b) => {
+    const dateA = new Date(a.birthDate).getTime();
+    const dateB = new Date(b.birthDate).getTime();
+    // Descending Age = Oldest first (Smallest timestamp)
+    return sortOrder === 'desc' ? dateA - dateB : dateB - dateA;
+  });
 
   if (loading) {
     return (
@@ -113,113 +120,152 @@ export const FamilyView: React.FC = () => {
                 <GitBranch className="w-5 h-5 text-accent-orange" />
                 <label className="block text-sm font-medium text-black dark:text-white">Filter by Generation</label>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedGeneration(null)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    selectedGeneration === null
-                      ? 'bg-accent-blue text-white shadow-soft'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  All
-                </motion.button>
-                {generations.map((gen, index) => (
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div className="flex flex-wrap gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedGeneration(null)}
+                      className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 ${
+                        selectedGeneration === null
+                          ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/25'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
+                      }`}
+                    >
+                      All Generations
+                    </motion.button>
+                    {generations.map((gen, index) => (
+                      <motion.button
+                        key={gen}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.15 + index * 0.05 }}
+                        onClick={() => setSelectedGeneration(gen)}
+                        className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 ${
+                          selectedGeneration === gen
+                            ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/25'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
+                        }`}
+                      >
+                        Gen {gen}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {/* Sort Button */}
                   <motion.button
-                    key={gen}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.15 + index * 0.05 }}
-                    onClick={() => setSelectedGeneration(gen)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      selectedGeneration === gen
-                        ? 'bg-accent-blue text-white shadow-soft'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
-                    Generation {gen}
+                    <CalendarIcon className="w-4 h-4" />
+                    <span>{sortOrder === 'desc' ? 'Oldest First' : 'Youngest First'}</span>
                   </motion.button>
-                ))}
-              </div>
-            </Card>
+                </div>
+              </Card>
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {filteredMembers.map((member, index) => (
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.2
+              }
+            }
+          }}
+        >
+          {filteredMembers.map((member) => (
             <motion.div
               key={member._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + index * 0.05 }}
-              whileHover={{ y: -4 }}
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 20 } }
+              }}
+              whileHover={{ y: -5 }}
+              className="h-full"
             >
               <Card 
                 onClick={() => handleMemberClick(member.id)} 
-                hover
-                className="group relative overflow-hidden"
+                className="group h-full border-0 !bg-white dark:!bg-gray-800 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 overflow-hidden cursor-pointer"
+                noPadding
               >
-                <div className="absolute top-0 right-0 w-16 h-16 bg-accent-blue/5 dark:bg-accent-blue/10 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-300"></div>
-                <div className="text-center relative">
-                  <motion.div 
-                    className="flex justify-center mb-4"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {member.avatar ? (
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 shadow-soft group-hover:shadow-medium transition-all duration-300"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-accent-blue/10 dark:bg-accent-blue/20 border-4 border-gray-200 dark:border-gray-700 flex items-center justify-center shadow-soft group-hover:shadow-medium transition-all duration-300">
-                        <User className="w-12 h-12 sm:w-14 sm:h-14 text-accent-blue" />
-                      </div>
-                    )}
-                  </motion.div>
-                  <h3 className="text-lg sm:text-xl font-bold text-black dark:text-white mb-2">{member.name}</h3>
-                  <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center justify-center space-x-1">
-                      <CalendarIcon className="w-4 h-4" />
-                      <p>Born: {format(new Date(member.birthDate), 'MMM dd, yyyy')}</p>
+                {/* Banner Gradient */}
+                <div className="h-24 bg-gradient-to-r from-slate-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 relative">
+                    <div className="absolute inset-0 bg-grid-black/[0.03] dark:bg-grid-white/[0.03]" />
+                    <div className="absolute top-2 right-2">
+                        <span className="px-2 py-1 bg-white/50 dark:bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 border border-white/20">
+                            Gen {member.generation}
+                        </span>
                     </div>
-                    {member.deathDate && (
-                      <p className="text-gray-500 dark:text-gray-500">Died: {format(new Date(member.deathDate), 'MMM dd, yyyy')}</p>
-                    )}
-                    {member.occupation && (
-                      <div className="flex items-center justify-center space-x-1 mt-2">
-                        <Briefcase className="w-4 h-4" />
-                        <p className="text-gray-700 dark:text-gray-300 font-medium">{member.occupation}</p>
-                      </div>
-                    )}
-                    {member.location && (
-                      <div className="flex items-center justify-center space-x-1">
-                        <MapPin className="w-4 h-4" />
-                        <p className="text-gray-500 dark:text-gray-500">{member.location}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <span className="badge badge-gray">Gen {member.generation}</span>
-                  </div>
+                </div>
+
+                <div className="px-6 pb-6 relative">
+                    {/* Avatar */}
+                    <div className="relative -mt-12 mb-4 inline-block">
+                        <div className="h-24 w-24 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-lg ring-1 ring-black/5 dark:ring-white/10 mx-auto transform group-hover:scale-105 transition-transform duration-300">
+                           {member.avatar ? (
+                                <img
+                                    src={member.avatar}
+                                    alt={member.name}
+                                    className="h-full w-full object-cover rounded-xl"
+                                />
+                            ) : (
+                                <div className="h-full w-full rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+                                    <span className="text-2xl font-black text-indigo-300 dark:text-gray-400">
+                                        {member.name.charAt(0)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="text-center space-y-1">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {member.name}
+                        </h3>
+                        {/* Nickname Removed */}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-1 h-4">
+                            {member.occupation || "Family Member"}
+                        </p>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="w-3.5 h-3.5 opacity-70" />
+                            <span>{new Date(member.birthDate).getFullYear()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                             <MapPin className="w-3.5 h-3.5 opacity-70" />
+                             <span className="truncate max-w-[80px]">{member.location || "Unknown"}</span>
+                        </div>
+                    </div>
                 </div>
               </Card>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {filteredMembers.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="card text-center py-12"
+            className="flex flex-col items-center justify-center py-16 text-center"
           >
-            <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 text-lg">No family members found</p>
+            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+               <Users className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">No family members found</h3>
+            <p className="text-gray-500 dark:text-gray-400">Try adjusting your filters or adding new members.</p>
           </motion.div>
         )}
 

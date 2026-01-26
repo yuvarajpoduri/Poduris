@@ -21,21 +21,19 @@ export const protect = async (req, res, next) => {
   }
   
   // Set session variables expected by controllers
+  // Set session variables expected by controllers
   req.session.role = 'admin';
-  req.session.familyMemberId = '507f1f77bcf86cd799439011';
+  // Use a valid, constant ObjectId for the mock admin
+  req.session.userId = '507f1f77bcf86cd799439011'; 
   
   // Set request variables expected by controllers
-  req.familyMember = {
-    _id: '507f1f77bcf86cd799439011', 
-    id: 999999, // Use a number as per schema
+  req.user = { 
+    _id: '507f1f77bcf86cd799439011',  // Valid ObjectId
     role: 'admin',
-    email: process.env.ADMIN_EMAIL || 'admin@poduris.com',
     name: 'Admin',
-    // Add default fields to prevent undefined errors
-    generation: 0,
-    gender: 'other'
+    email: process.env.ADMIN_EMAIL || 'admin@poduris.com',
+    status: 'approved'
   };
-  req.user = req.familyMember; // For backward compatibility
 
   return next();
 };

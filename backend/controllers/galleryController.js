@@ -62,7 +62,7 @@ export const getGalleryImage = async (req, res, next) => {
 
 // @desc    Upload gallery image
 // @route   POST /api/gallery
-// @access  Private (approved users and admins)
+// @access  Private (All authenticated users)
 export const uploadGalleryImage = async (req, res, next) => {
   try {
     const { title, description, imageUrl, cloudinaryId, familyMemberId } = req.body;
@@ -74,23 +74,37 @@ export const uploadGalleryImage = async (req, res, next) => {
       });
     }
 
-    // Only approved users or admins can upload images
-    if (req.user?.role !== 'admin' && req.user?.status !== 'approved') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only approved users can upload images'
-      });
-    }
+    // --- MONTHLY LIMIT CHECK ---
+    // If not admin, restrict to 10 uploads per month
+    if (req.user?.role !== 'admin') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
 
-    // Admin uploads are auto-approved, others are pending
-    const status = req.user?.role === 'admin' ? 'approved' : 'pending';
+      const uploadsThisMonth = await Gallery.countDocuments({
+        uploadedBy: req.user._id,
+        createdAt: { $gte: startOfMonth }
+      });
+
+      if (uploadsThisMonth >= 10) {
+        return res.status(403).json({
+          success: false,
+          message: 'Monthly upload limit reached (10 photos). Please try again next month or contact admin.'
+        });
+      }
+    }
+    // ---------------------------
+
+    // --- AUTO-APPROVE ALL UPLOADS ---
+    // User requested that standard user uploads should be visible to everyone immediately
+    const status = 'approved';
 
     const image = await Gallery.create({
       title,
       description: description || '',
       imageUrl,
       cloudinaryId,
-      uploadedBy: req.user.id,
+      uploadedBy: req.user._id, // Use _id as set in auth middleware
       familyMemberId: familyMemberId || null,
       status
     });

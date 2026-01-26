@@ -250,6 +250,7 @@ export const createFamilyMember = async (req, res, next) => {
     const {
       id,
       name,
+      nickname,
       birthDate,
       deathDate,
       gender,
@@ -298,6 +299,7 @@ export const createFamilyMember = async (req, res, next) => {
     const member = await FamilyMember.create({
       id,
       name,
+      nickname: nickname || "",
       birthDate,
       deathDate: deathDate || null,
       gender,
@@ -364,7 +366,7 @@ export const updateFamilyMember = async (req, res, next) => {
     if (!isAdmin) {
       // Members can only update: name, email, password, avatar, bio, location, occupation, anniversaryDate
       // They cannot update: id, birthDate, deathDate, gender, parentId, spouseId, generation
-      const allowedFields = ['name', 'email', 'password', 'avatar', 'bio', 'location', 'occupation', 'anniversaryDate'];
+      const allowedFields = ['name', 'nickname', 'email', 'password', 'avatar', 'bio', 'location', 'occupation', 'anniversaryDate'];
       Object.keys(updateData).forEach(key => {
         if (!allowedFields.includes(key)) {
           delete updateData[key];

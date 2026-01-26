@@ -5,12 +5,13 @@ interface CardProps {
   className?: string;
   onClick?: () => void;
   hover?: boolean;
+  noPadding?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ children, className = '', onClick, hover = false }) => {
+export const Card: React.FC<CardProps> = ({ children, className = '', onClick, hover = false, noPadding = false }) => {
   return (
     <div
-      className={`card ${hover || onClick ? 'card-hover' : ''} ${className}`}
+      className={`card ${noPadding ? '!p-0' : ''} ${hover || onClick ? 'card-hover' : ''} ${className}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}

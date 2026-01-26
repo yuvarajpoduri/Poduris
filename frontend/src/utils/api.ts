@@ -25,7 +25,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // localStorage.removeItem("user"); // Client side logout disabled for dev bypass
+      localStorage.removeItem("user");
+      // Optional: Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+         window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -103,6 +107,10 @@ export const familyMembersAPI = {
   },
   delete: async (id: string | number): Promise<void> => {
     await api.delete(`/family-members/${id}`);
+  },
+  updateMyProfile: async (profile: Partial<FamilyMember>): Promise<FamilyMember> => {
+    const response = await api.put<ApiResponse<FamilyMember>>("/users/me/profile", profile);
+    return response.data.data!;
   },
 };
 
@@ -184,7 +192,7 @@ export const uploadAPI = {
     const response = await api.post<
       ApiResponse<{ imageUrl: string; cloudinaryId: string }>
     >("/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": undefined },
     });
     return response.data.data!;
   },
