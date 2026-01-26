@@ -125,22 +125,6 @@ app.get("/api/health", (req, res) => {
 });
 
 /* =======================
-   STATIC ASSETS (PRODUCTION)
-======================= */
-if (process.env.NODE_ENV === "production" || process.env.SERVE_FRONTEND === "true") {
-  const frontendPath = path.join(__dirname, "../frontend/dist");
-  app.use(express.static(frontendPath));
-  
-  app.get("*", (req, res, next) => {
-    // If request starts with /api, it shouldn't be handled by the frontend router
-    if (req.url.startsWith('/api')) {
-      return next();
-    }
-    res.sendFile(path.resolve(frontendPath, "index.html"));
-  });
-}
-
-/* =======================
    ERROR HANDLER
 ======================= */
 app.use(errorHandler);
