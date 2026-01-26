@@ -45,7 +45,10 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://poduris.onrender.com",
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
+
+app.get("/healthz", (req, res) => res.status(200).send("OK"));
 
 app.use(
   cors({
