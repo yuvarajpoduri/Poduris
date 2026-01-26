@@ -148,6 +148,29 @@ export const updateUser = async (req, res, next) => {
   }
 };
 
+export const resetUserPassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.password = password;
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update current user's own profile (after approval)
 // @route   PUT /api/users/me/profile
 // @access  Private

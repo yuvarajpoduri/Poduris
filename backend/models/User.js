@@ -57,6 +57,18 @@ const userSchema = new mongoose.Schema({
   linkedFamilyMemberId: {
     type: Number,
     default: null
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  },
+  currentPath: {
+    type: String,
+    default: '/'
+  },
+  sessionTimeToday: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

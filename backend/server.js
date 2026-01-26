@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import { trackActivity } from "./middlewares/trackActivity.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -20,6 +21,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js"; // New
 import eventRoutes from "./routes/eventRoutes.js"; // Added event routes
 import wishRoutes from "./routes/wishRoutes.js";
+import statsRoutes from "./routes/statsRoutes.js";
 
 
 
@@ -99,6 +101,8 @@ app.use(
   })
 );
 
+app.use(trackActivity);
+
 /* =======================
    ROUTES
 ======================= */
@@ -113,6 +117,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/wishes", wishRoutes);
+app.use("/api/stats", statsRoutes);
 
 /* =======================
    HEALTH CHECK

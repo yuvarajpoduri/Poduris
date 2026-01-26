@@ -475,3 +475,32 @@ export const deleteFamilyMember = async (req, res, next) => {
     next(error);
   }
 };
+
+export const resetMemberPassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+
+    let member;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      member = await FamilyMember.findById(id);
+    } else {
+      member = await FamilyMember.findOne({ id: parseInt(id) });
+    }
+
+    if (!member) {
+      return res.status(404).json({ success: false, message: "Member not found" });
+    }
+
+    member.password = password;
+    await member.save();
+
+    res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -91,6 +91,18 @@ const familyMemberSchema = new mongoose.Schema({
     type: String,
     default: '',
     trim: true
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  },
+  currentPath: {
+    type: String,
+    default: '/'
+  },
+  sessionTimeToday: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
