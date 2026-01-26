@@ -61,11 +61,11 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOp
                     key={notification._id}
                     onClick={() => {
                         if (notification.type === 'event' && notification.metadata?.eventId) {
-                             // Close dropdown
                              onClose();
-                             // Navigate doesn't work well inside this component structure if it is outside Router context or we prefer window.location for full reload to ensure data refresh
-                             // But we are in a component likely in Router.
                              window.location.href = `/calendar?eventId=${notification.metadata.eventId}`;
+                        } else if (notification.metadata?.redirectTo) {
+                             onClose();
+                             window.location.href = notification.metadata.redirectTo;
                         }
                         if (!notification.isRead) markAsRead(notification._id);
                     }}

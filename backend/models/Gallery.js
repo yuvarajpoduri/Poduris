@@ -21,12 +21,21 @@ const gallerySchema = new mongoose.Schema({
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'FamilyMember',
     required: true
   },
   familyMemberId: {
     type: Number,
     default: null
+  },
+  location: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  date: {
+    type: Date,
+    default: Date.now
   },
   status: {
     type: String,

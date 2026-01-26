@@ -55,10 +55,13 @@ export interface GalleryImage {
   description: string;
   imageUrl: string;
   cloudinaryId: string;
+  location: string;
+  date: string;
   uploadedBy: {
     _id: string;
     name: string;
     email: string;
+    avatar?: string;
   };
   familyMemberId: number | null;
   status: 'pending' | 'approved' | 'rejected';

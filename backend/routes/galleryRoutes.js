@@ -20,7 +20,7 @@ router.post('/', protect, uploadGalleryImage);
 router.put('/:id', protect, authorize('admin'), updateGalleryImage);
 router.put('/:id/approve', protect, authorize('admin'), approveGalleryImage);
 router.put('/:id/reject', protect, authorize('admin'), rejectGalleryImage);
-router.delete('/:id', protect, authorize('admin'), deleteGalleryImage);
+router.delete('/:id', protect, deleteGalleryImage);
 
 export default router;
 

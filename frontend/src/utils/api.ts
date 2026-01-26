@@ -113,18 +113,18 @@ export const familyMembersAPI = {
 
 
 export const galleryAPI = {
-  getAll: async (): Promise<GalleryImage[]> => {
-    const response = await api.get<ApiResponse<GalleryImage[]>>("/gallery");
+  getAll: async (params?: { search?: string; sort?: string; month?: number; year?: number }): Promise<GalleryImage[]> => {
+    const response = await api.get<ApiResponse<GalleryImage[]>>("/gallery", { params });
     return response.data.data || [];
   },
   getById: async (id: string): Promise<GalleryImage> => {
     const response = await api.get<ApiResponse<GalleryImage>>(`/gallery/${id}`);
     return response.data.data!;
   },
-  upload: async (image: Partial<GalleryImage>): Promise<GalleryImage> => {
-    const response = await api.post<ApiResponse<GalleryImage>>(
+  upload: async (payload: Partial<GalleryImage> | { images: Partial<GalleryImage>[] }): Promise<GalleryImage | GalleryImage[]> => {
+    const response = await api.post<ApiResponse<GalleryImage | GalleryImage[]>>(
       "/gallery",
-      image
+      payload
     );
     return response.data.data!;
   },
