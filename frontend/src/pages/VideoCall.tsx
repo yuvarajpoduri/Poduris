@@ -123,76 +123,106 @@ export const VideoCall: React.FC = () => {
     }
   };
 
-  const startCall = async () => {
+  const startCall = async (retryCount = 0) => {
     if (!roomName.trim()) return;
     setError(null);
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError("Camera/Microphone access is not supported by your browser or requires a secure (HTTPS) connection.");
-      return;
-    }
-
     try {
-      console.log("Requesting media devices...");
+      console.log(`Starting call (attempt ${retryCount + 1})...`);
       
-      // Stop any existing stream before starting a new one
+      // 1. Aggressively clean up any existing streams/tracks
       stopStream();
+      
+      // 2. Small delay to allow hardware to release (crucial for mobile/WebView)
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Explicitly check for support
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("MediaDevices.getUserMedia is not supported on this browser.");
+      // 3. Optional: Enumerate devices to "wake up" the hardware layer
+      if (navigator.mediaDevices?.enumerateDevices) {
+        await navigator.mediaDevices.enumerateDevices();
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: {
           facingMode: "user",
-          width: { min: 320, ideal: 640, max: 1280 },
-          height: { min: 240, ideal: 480, max: 720 },
-          frameRate: { ideal: 24, max: 30 }
+          // Use very safe defaults for mobile
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { max: 30 }
         },
         audio: {
           echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+          noiseSuppression: true
         }
-      });
+      };
 
-      console.log("Media stream obtained:", stream.id);
-      streamRef.current = stream;
-      setUserStream(stream);
-      
-      if (userVideoRef.current) {
-        userVideoRef.current.srcObject = stream;
-        // WebView trick: play explicitly if autoPlay fails
-        userVideoRef.current.play().catch(e => console.error("Auto-play failed:", e));
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Media stream obtained successfully");
+        
+        streamRef.current = stream;
+        setUserStream(stream);
+        
+        if (userVideoRef.current) {
+          userVideoRef.current.srcObject = stream;
+          // Forced play for WebView
+          const playPromise = userVideoRef.current.play();
+          if (playPromise !== undefined) {
+             playPromise.catch(() => {
+                console.log("Auto-play prevented, waiting for user interaction");
+             });
+          }
+        }
+
+        setInCall(true);
+        socket.emit("join-room", {
+          roomName,
+          userName: user?.nickname || user?.name,
+          userAvatar: user?.avatar
+        });
+
+      } catch (err: any) {
+        // If "Already in use" and we haven't retried yet, try one more time
+        if ((err.name === 'NotReadableError' || err.name === 'TrackStartError') && retryCount < 1) {
+          console.log("Hardware busy, retrying in 1.5 seconds...");
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          return startCall(retryCount + 1);
+        }
+
+        // If it's still failing after retry, try AUDIO ONLY as a final fallback
+        if (retryCount >= 1 && constraints.video) {
+          console.log("Video failed twice, falling back to audio-only...");
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          streamRef.current = audioStream;
+          setUserStream(audioStream);
+          setIsVideoOff(true);
+          setInCall(true);
+          socket.emit("join-room", {
+            roomName,
+            userName: user?.nickname || user?.name,
+            userAvatar: user?.avatar
+          });
+          return;
+        }
+
+        throw err; // Re-throw to be caught by outer catch
       }
 
-      setInCall(true);
-
-      socket.emit("join-room", {
-        roomName,
-        userName: user?.nickname || user?.name,
-        userAvatar: user?.avatar
-      });
-
     } catch (err: any) {
-      console.error("Failed to get media devices:", err);
-      let errorMsg = "Could not access camera/microphone.";
+      console.error("Final media access error:", err);
+      let errorMsg = "Connection failed. Please check permissions.";
       
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMsg = "Camera/Microphone permission denied. Please allow access in your phone settings → Apps → Poduris.";
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errorMsg = "No camera or microphone found on this device.";
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        errorMsg = "Camera or microphone is already in use by another app. Please close other camera apps (like WhatsApp/System Camera).";
-        // Force stop tracks anyway if something hung
-        stopStream();
-      } else if (err.message) {
-        errorMsg = err.message;
+        errorMsg = "Permission denied. Allow Camera/Mic in Settings > Apps > Poduris.";
+      } else if (err.name === 'NotFoundError') {
+        errorMsg = "No camera/mic found.";
+      } else {
+        // Instead of showing "Already in use", we show a friendlier recovery message
+        errorMsg = "Hardware is taking longer than expected. Please close other camera apps and try again.";
       }
       
       setError(errorMsg);
       setInCall(false);
+      stopStream();
     }
   };
 
@@ -461,7 +491,7 @@ export const VideoCall: React.FC = () => {
           isPinned ? 'ring-4 ring-accent-blue ring-offset-4 ring-offset-gray-950' : ''
         }`}
       >
-        {stream ? (
+        {stream && (stream.getVideoTracks().length > 0) ? (
           <video
             ref={videoRef}
             autoPlay
@@ -471,13 +501,26 @@ export const VideoCall: React.FC = () => {
           />
         ) : (
           <div className={`w-full h-full flex flex-col items-center justify-center ${bgColor}`}>
-            {avatar ? (
-              <img src={avatar} alt={name} className="w-24 h-24 rounded-full object-cover border-4 border-white/10 shadow-2xl" />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
-                {name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <AnimatePresence>
+               <motion.div 
+                 initial={{ scale: 0.8, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 1 }}
+                 className="relative"
+               >
+                  {avatar ? (
+                    <img src={avatar} alt={name} className="w-24 h-24 rounded-full object-cover border-4 border-white/10 shadow-2xl" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
+                      {name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  {(!stream || stream.getAudioTracks().length > 0) && (
+                    <div className="absolute -bottom-2 -right-2 bg-accent-blue p-2 rounded-full border-2 border-gray-900 shadow-xl">
+                       <Mic className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+               </motion.div>
+            </AnimatePresence>
             <p className="mt-4 text-white/50 font-medium text-sm uppercase tracking-widest">{isLocal ? "You" : name}</p>
           </div>
         )}
@@ -594,7 +637,7 @@ export const VideoCall: React.FC = () => {
                )}
 
                <button
-                 onClick={startCall}
+                 onClick={() => startCall()}
                  disabled={!roomName.trim()}
                  className="w-full bg-gradient-to-tr from-accent-blue to-indigo-600 hover:from-accent-blue/90 hover:to-indigo-600/90 disabled:opacity-30 disabled:cursor-not-allowed py-5 rounded-3xl font-black text-xl shadow-2xl shadow-accent-blue/20 transition-all active:scale-95 flex items-center justify-center space-x-3"
                >
