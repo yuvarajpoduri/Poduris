@@ -50,6 +50,7 @@ export const VideoCall: React.FC = () => {
   const [activeRooms, setActiveRooms] = useState<{ name: string, count: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
+  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>('unknown');
 
   const socketIdRef = useRef<string>();
   const peersRef = useRef<PeerState[]>([]);
@@ -103,6 +104,32 @@ export const VideoCall: React.FC = () => {
     };
   }, [inCall]);
 
+  useEffect(() => {
+    // Check permission status on mount
+    if (navigator.permissions && (navigator.permissions as any).query) {
+      (navigator.permissions as any).query({ name: 'microphone' }).then((result: any) => {
+        setMicPermission(result.state);
+        result.onchange = () => setMicPermission(result.state);
+      }).catch(() => setMicPermission('unknown'));
+    }
+  }, []);
+
+  const requestMicAccess = async () => {
+    try {
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // If successful, stop it immediately, we just wanted to trigger the prompt
+      stream.getTracks().forEach(t => t.stop());
+      setMicPermission('granted');
+      return true;
+    } catch (err: any) {
+      console.error("Manual mic request failed:", err);
+      setMicPermission('denied');
+      setError("Microphone access denied. Please allow it to use voice calling.");
+      return false;
+    }
+  };
+
   const stopStream = () => {
     console.log("Stopping all media tracks...");
     if (streamRef.current) {
@@ -127,6 +154,13 @@ export const VideoCall: React.FC = () => {
 
     try {
       console.log("Starting voice call...");
+      
+      // Secondary check for mobile users who might have missed the prompt
+      if (micPermission !== 'granted') {
+        const granted = await requestMicAccess();
+        if (!granted) return;
+      }
+
       stopStream();
       
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -567,14 +601,34 @@ export const VideoCall: React.FC = () => {
                  </motion.div>
                )}
 
-               <button
-                 onClick={() => startCall()}
-                 disabled={!roomName.trim()}
-                 className="w-full bg-gradient-to-tr from-accent-blue to-indigo-600 hover:from-accent-blue/90 hover:to-indigo-600/90 disabled:opacity-30 disabled:cursor-not-allowed py-5 rounded-3xl font-black text-xl shadow-2xl shadow-accent-blue/20 transition-all active:scale-95 flex items-center justify-center space-x-3"
-               >
-                 <span>{activeRooms.some(r => r.name === roomName) ? "Join Connection" : "Start Connection"}</span>
-                 <Plus className="w-6 h-6" />
-               </button>
+                {micPermission !== 'granted' && (
+                  <button
+                    onClick={requestMicAccess}
+                    className="w-full bg-white/5 border-2 border-dashed border-accent-blue/30 hover:border-accent-blue/60 p-4 rounded-2xl flex items-center justify-between group transition-all"
+                  >
+                    <div className="flex items-center space-x-3">
+                       <div className="p-2 bg-accent-blue/10 rounded-xl">
+                          <Mic className="w-5 h-5 text-accent-blue" />
+                       </div>
+                       <div className="text-left">
+                          <p className="font-bold text-sm text-white/80">Enable Microphone</p>
+                          <p className="text-[10px] text-white/40">Required for audio calling</p>
+                       </div>
+                    </div>
+                    <div className="px-3 py-1 bg-accent-blue/20 rounded-lg text-[10px] font-black text-accent-blue uppercase tracking-widest group-hover:bg-accent-blue group-hover:text-white transition-all">
+                       Allow Access
+                    </div>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => startCall()}
+                  disabled={!roomName.trim()}
+                  className="w-full bg-gradient-to-tr from-accent-blue to-indigo-600 hover:from-accent-blue/90 hover:to-indigo-600/90 disabled:opacity-30 disabled:cursor-not-allowed py-5 rounded-3xl font-black text-xl shadow-2xl shadow-accent-blue/20 transition-all active:scale-95 flex items-center justify-center space-x-3"
+                >
+                  <span>{activeRooms.some(r => r.name === roomName) ? "Join Connection" : "Start Connection"}</span>
+                  <Plus className="w-6 h-6" />
+                </button>
             </div>
 
           </motion.div>
