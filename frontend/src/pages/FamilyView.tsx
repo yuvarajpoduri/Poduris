@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { familyMembersAPI } from '../utils/api';
 import type { FamilyMember, FamilyMemberWithRelations } from '../types';
 import { format } from 'date-fns';
-import { Users, GitBranch, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import { Users, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin, Play, Search, Filter, BookOpen, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPoduriName } from '../utils/formatUtils';
 import { FamilyStory } from '../components/FamilyStory';
-import { Play } from 'lucide-react';
 
 export const FamilyView: React.FC = () => {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -21,6 +19,7 @@ export const FamilyView: React.FC = () => {
   const [generations, setGenerations] = useState<number[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isStoryOpen, setIsStoryOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -43,12 +42,6 @@ export const FamilyView: React.FC = () => {
     fetchMembers();
   }, []);
 
-  useEffect(() => {
-    if (generations.length > 0 && selectedGeneration === null) {
-      setSelectedGeneration(generations[0]);
-    }
-  }, [generations, selectedGeneration]);
-
   const handleMemberClick = async (memberId: number) => {
     try {
       const member = await familyMembersAPI.getById(memberId);
@@ -59,27 +52,25 @@ export const FamilyView: React.FC = () => {
     }
   };
 
-  const filteredMembers = (selectedGeneration !== null
-    ? members.filter(m => m.generation === selectedGeneration)
-    : members).sort((a, b) => {
-    const dateA = new Date(a.birthDate).getTime();
-    const dateB = new Date(b.birthDate).getTime();
-    // Descending Age = Oldest first (Smallest timestamp)
-    return sortOrder === 'desc' ? dateA - dateB : dateB - dateA;
-  });
+  const filteredMembers = members
+    .filter(m => {
+      const matchesGen = selectedGeneration === null || m.generation === selectedGeneration;
+      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            m.nickname?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesGen && matchesSearch;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.birthDate).getTime();
+      const dateB = new Date(b.birthDate).getTime();
+      return sortOrder === 'desc' ? dateA - dateB : dateB - dateA;
+    });
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
-          >
-            <Loader2 className="w-12 h-12 text-accent-blue animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading family members...</p>
-          </motion.div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
+          <p className="text-gray-500 font-medium">Loading family...</p>
         </div>
       </Layout>
     );
@@ -88,201 +79,150 @@ export const FamilyView: React.FC = () => {
   if (error) {
     return (
       <Layout>
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-        >
-          <p className="text-red-700 dark:text-red-400 text-center">{error}</p>
-        </motion.div>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <p className="text-red-500 font-bold">{error}</p>
+        </div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-6"
-      >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="mb-2">Family Tree</h1>
-              <p className="text-gray-600 dark:text-gray-400">Explore your family across generations</p>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsStoryOpen(true)}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
-            >
-              <Play className="w-5 h-5 fill-white" />
-              <span>Watch Family Story</span>
-            </motion.button>
+      <div className="pb-20 max-w-7xl mx-auto px-4 sm:px-6">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-8 mt-4">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight leading-none mb-2">
+              The Lineage
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              Explore your roots and relationships.
+            </p>
           </div>
 
-        {generations.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+          <button
+            onClick={() => setIsStoryOpen(true)}
+            className="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-full font-bold shadow-lg shadow-indigo-600/20 active:scale-95 transition-transform flex items-center justify-center gap-2"
           >
-            <Card>
-              <div className="flex items-center space-x-2 mb-4">
-                <GitBranch className="w-5 h-5 text-accent-orange" />
-                <label className="block text-sm font-medium text-black dark:text-white">Filter by Generation</label>
-              </div>
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedGeneration(null)}
-                      className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 ${
-                        selectedGeneration === null
-                          ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/25'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
-                      }`}
-                    >
-                      All Generations
-                    </motion.button>
-                    {generations.map((gen, index) => (
-                      <motion.button
-                        key={gen}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.15 + index * 0.05 }}
-                        onClick={() => setSelectedGeneration(gen)}
-                        className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 ${
-                          selectedGeneration === gen
-                            ? 'bg-gradient-to-r from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-500/25'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500'
-                        }`}
-                      >
-                        Gen {gen}
-                      </motion.button>
-                    ))}
-                  </div>
+            <Play className="w-5 h-5 fill-current" />
+            Watch Story
+          </button>
+        </div>
 
-                  {/* Sort Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>{sortOrder === 'desc' ? 'Oldest First' : 'Youngest First'}</span>
-                  </motion.button>
-                </div>
-              </Card>
-          </motion.div>
-        )}
+        {/* Controls - NOT STICKY ANYMORE */}
+        <div className="mb-8 space-y-3 z-40 relative">
+          <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 flex gap-2 overflow-x-auto no-scrollbar">
+             <button
+                onClick={() => setSelectedGeneration(null)}
+                className={`shrink-0 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors ${
+                  selectedGeneration === null 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                }`}
+             >
+               All
+             </button>
+             {generations.map(gen => (
+               <button
+                  key={gen}
+                  onClick={() => setSelectedGeneration(gen)}
+                  className={`shrink-0 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors ${
+                    selectedGeneration === gen 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                  }`}
+               >
+                 Gen {gen}
+               </button>
+             ))}
+          </div>
+          
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+               <input 
+                 type="text" 
+                 placeholder="Search members..." 
+                 value={searchQuery}
+                 onChange={e => setSearchQuery(e.target.value)}
+                 className="w-full bg-white dark:bg-gray-800 border-none rounded-xl py-3 pl-10 pr-4 font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 focus:ring-indigo-500 transition-all"
+               />
+            </div>
+             <button
+               onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+               className="px-4 bg-white dark:bg-gray-800 rounded-xl font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300"
+             >
+               <Filter className="w-4 h-4" />
+               {sortOrder === 'desc' ? 'Desc' : 'Asc'}
+             </button>
+          </div>
+        </div>
 
+        {/* Compact Grid */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2
-              }
-            }
-          }}
+          layout
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
         >
-          {filteredMembers.map((member) => (
-            <motion.div
-              key={member._id}
-              variants={{
-                hidden: { opacity: 0, y: 30 },
-                visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 20 } }
-              }}
-              whileHover={{ y: -5 }}
-              className="h-full"
-            >
-              <Card 
-                onClick={() => handleMemberClick(member.id)} 
-                className="group h-full border-0 !bg-white dark:!bg-gray-800 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all duration-300 overflow-hidden cursor-pointer"
-                noPadding
+          <AnimatePresence mode="popLayout">
+            {filteredMembers.map((member) => (
+              <motion.div
+                key={member._id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => handleMemberClick(member.id)}
+                className="group cursor-pointer flex flex-col gap-2"
               >
-                {/* Banner Gradient */}
-                <div className="h-24 bg-gradient-to-r from-slate-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 relative">
-                    <div className="absolute inset-0 bg-grid-black/[0.03] dark:bg-grid-white/[0.03]" />
-                    <div className="absolute top-2 right-2">
-                        <span className="px-2 py-1 bg-white/50 dark:bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 border border-white/20">
-                            Gen {member.generation}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="px-6 pb-6 relative">
-                    {/* Avatar */}
-                    <div className="relative -mt-12 mb-4 inline-block">
-                        <div className="h-24 w-24 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-lg ring-1 ring-black/5 dark:ring-white/10 mx-auto transform group-hover:scale-105 transition-transform duration-300">
-                           {member.avatar ? (
-                                <img
-                                    src={member.avatar}
-                                    alt={member.name}
-                                    className="h-full w-full object-cover rounded-xl"
-                                />
-                            ) : (
-                                <div className="h-full w-full rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
-                                    <span className="text-2xl font-black text-indigo-300 dark:text-gray-400">
-                                        {member.name.charAt(0)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                 <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-white/5">
+                    {member.avatar ? (
+                      <img 
+                        src={member.avatar} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-active:scale-105"
+                        alt={member.name}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+                         <span className="text-4xl font-black text-gray-300 dark:text-gray-600">
+                           {member.name.charAt(0)}
+                         </span>
+                      </div>
+                    )}
                     
-                    <div className="text-center space-y-1">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {formatPoduriName(member.name)}
-                        </h3>
-                        {/* Nickname Removed */}
-                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-1 h-4">
-                            {member.occupation || "Family Member"}
-                        </p>
+                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/40 backdrop-blur-md rounded-md text-[10px] font-black text-white/90 border border-white/10">
+                       G{member.generation}
                     </div>
+                 </div>
 
-                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between text-xs font-medium text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-1.5">
-                            <CalendarIcon className="w-3.5 h-3.5 opacity-70" />
-                            <span>{new Date(member.birthDate).getFullYear()}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                             <MapPin className="w-3.5 h-3.5 opacity-70" />
-                             <span className="truncate max-w-[80px]">{member.location || "Unknown"}</span>
-                        </div>
+                 <div className="px-1">
+                    <h3 className="font-bold text-gray-900 dark:text-white leading-tight text-sm sm:text-base truncate">
+                      {formatPoduriName(member.name)}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 mt-0.5">
+                       <span>{new Date(member.birthDate).getFullYear()}</span>
+                       {member.location && (
+                         <>
+                           <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                           <span className="truncate">{member.location}</span>
+                         </>
+                       )}
                     </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                 </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </motion.div>
 
         {filteredMembers.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center py-16 text-center"
-          >
-            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-               <Users className="w-10 h-10 text-gray-400 dark:text-gray-600" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">No family members found</h3>
-            <p className="text-gray-500 dark:text-gray-400">Try adjusting your filters or adding new members.</p>
-          </motion.div>
+          <div className="text-center py-20 text-gray-400">
+             No members found.
+          </div>
         )}
 
+        {/* Member Detail Modal */}
         <AnimatePresence>
           {isModalOpen && selectedMember && (
             <Modal
@@ -291,147 +231,207 @@ export const FamilyView: React.FC = () => {
                 setIsModalOpen(false);
                 setSelectedMember(null);
               }}
-              title={selectedMember.name}
+              title=""
               size="lg"
             >
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                {selectedMember.avatar && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex justify-center"
-                  >
-                    <img
-                      src={selectedMember.avatar}
-                      alt={selectedMember.name}
-                      className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 shadow-soft"
-                    />
-                  </motion.div>
-                )}
-                
-                {selectedMember.bio && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="border-t border-gray-200 dark:border-gray-700 pt-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-3">
-                      <FileText className="w-5 h-5 text-accent-blue" />
-                      <h3 className="text-lg font-semibold text-black dark:text-white">Bio</h3>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{selectedMember.bio}</p>
-                  </motion.div>
-                )}
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="border-t border-gray-200 dark:border-gray-700 pt-6"
-                >
-                  <div className="flex items-center space-x-2 mb-4">
-                    <CalendarIcon className="w-5 h-5 text-accent-blue" />
-                    <h3 className="text-lg font-semibold text-black dark:text-white">Details</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Birth Date</p>
-                      <p className="text-base font-medium text-black dark:text-white">{format(new Date(selectedMember.birthDate), 'MMM dd, yyyy')}</p>
-                    </div>
-                    {selectedMember.deathDate && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Death Date</p>
-                        <p className="text-base font-medium text-black dark:text-white">{format(new Date(selectedMember.deathDate), 'MMM dd, yyyy')}</p>
-                      </div>
-                    )}
-                    {selectedMember.occupation && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Occupation</p>
-                        <p className="text-base font-medium text-black dark:text-white">{selectedMember.occupation}</p>
-                      </div>
-                    )}
-                    {selectedMember.location && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Location</p>
-                        <p className="text-base font-medium text-black dark:text-white">{selectedMember.location}</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-
-                {selectedMember.parents.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="border-t border-gray-200 dark:border-gray-700 pt-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-3">
-                      <UsersRound className="w-5 h-5 text-accent-blue" />
-                      <h3 className="text-lg font-semibold text-black dark:text-white">Parents</h3>
-                    </div>
-                    <div className="space-y-2">
-                      {selectedMember.parents.map((parent) => (
-                        <div key={parent._id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                          <p className="text-base font-medium text-black dark:text-white">{parent.name}</p>
+              <div className="pb-4">
+                {/* Header Profile with Cover Effect */}
+                <div className="relative mb-6">
+                    <div className="h-24 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-2xl opacity-10"></div>
+                    <div className="px-4 flex items-end gap-5 -mt-12">
+                         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white dark:bg-gray-900 p-1 shadow-xl shrink-0">
+                            {selectedMember.avatar ? (
+                                <img src={selectedMember.avatar} className="w-full h-full object-cover rounded-xl" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-3xl font-black text-gray-300 rounded-xl bg-gray-50 dark:bg-gray-800">
+                                {selectedMember.name.charAt(0)}
+                                </div>
+                            )}
                         </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {selectedMember.spouse && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="border-t border-gray-200 dark:border-gray-700 pt-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Heart className="w-5 h-5 text-accent-blue" />
-                      <h3 className="text-lg font-semibold text-black dark:text-white">Spouse</h3>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                      <p className="text-base font-medium text-black dark:text-white">{selectedMember.spouse.name}</p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {selectedMember.children.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="border-t border-gray-200 dark:border-gray-700 pt-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Baby className="w-5 h-5 text-accent-blue" />
-                      <h3 className="text-lg font-semibold text-black dark:text-white">Children</h3>
-                    </div>
-                    <div className="space-y-2">
-                      {selectedMember.children.map((child) => (
-                        <div key={child._id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                          <p className="text-base font-medium text-black dark:text-white">{child.name}</p>
+                        <div className="flex-1 pb-1">
+                             <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                    Gen {selectedMember.generation}
+                                </span>
+                                {selectedMember.gender && (
+                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                                        selectedMember.gender === 'male' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 
+                                        selectedMember.gender === 'female' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300' : 
+                                        'bg-gray-100 text-gray-700'
+                                    }`}>
+                                        {selectedMember.gender}
+                                    </span>
+                                )}
+                             </div>
+                             <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight">
+                                {formatPoduriName(selectedMember.name)}
+                             </h2>
+                             {selectedMember.nickname && (
+                                <p className="text-gray-500 font-medium italic">"{selectedMember.nickname}"</p>
+                             )}
                         </div>
-                      ))}
                     </div>
-                  </motion.div>
-                )}
-              </motion.div>
+                </div>
+
+                {/* Content Sections */}
+                <div className="space-y-8 px-2">
+                    {/* Key Details Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                         <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Birth Date</p>
+                            <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CalendarIcon className="w-4 h-4 text-indigo-500" />
+                                {format(new Date(selectedMember.birthDate), 'MMM dd, yyyy')}
+                            </p>
+                         </div>
+                         
+                         {selectedMember.deathDate ? (
+                             <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Passed Away</p>
+                                <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Crown className="w-4 h-4 text-amber-500" />
+                                    {format(new Date(selectedMember.deathDate), 'MMM dd, yyyy')}
+                                </p>
+                             </div>
+                         ) : (
+                            <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Age</p>
+                                <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Crown className="w-4 h-4 text-emerald-500" />
+                                    {new Date().getFullYear() - new Date(selectedMember.birthDate).getFullYear()} Years
+                                </p>
+                            </div>
+                         )}
+
+                         {selectedMember.anniversaryDate && (
+                             <div className="p-3 bg-pink-50 dark:bg-pink-900/10 rounded-xl border border-pink-100 dark:border-pink-900/20">
+                                <p className="text-[10px] font-bold text-pink-400 uppercase tracking-wider mb-1">Anniversary</p>
+                                <p className="font-bold text-pink-700 dark:text-pink-300 flex items-center gap-2">
+                                    <Heart className="w-4 h-4 fill-pink-500 text-pink-500" />
+                                    {format(new Date(selectedMember.anniversaryDate), 'MMM dd')}
+                                </p>
+                             </div>
+                         )}
+
+                         <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Location</p>
+                            <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2 truncate">
+                                <MapPin className="w-4 h-4 text-indigo-500" />
+                                {selectedMember.location || "N/A"}
+                            </p>
+                         </div>
+                    </div>
+
+                    {/* Bio & Stories */}
+                    {(selectedMember.bio || selectedMember.storyEn || selectedMember.storyTe) && (
+                        <div className="space-y-4">
+                            {selectedMember.bio && (
+                                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
+                                    <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400">
+                                        <FileText className="w-4 h-4" />
+                                        <span className="text-xs font-black uppercase tracking-widest">Bio / Catchphrase</span>
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed italic">
+                                        "{selectedMember.bio}"
+                                    </p>
+                                </div>
+                            )}
+
+                            {selectedMember.storyEn && (
+                                <div className="space-y-2">
+                                     <div className="flex items-center gap-2 text-gray-500">
+                                        <BookOpen className="w-4 h-4" />
+                                        <span className="text-xs font-black uppercase tracking-widest">Family Story</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
+                                        {selectedMember.storyEn}
+                                    </p>
+                                </div>
+                            )}
+
+                            {selectedMember.storyTe && (
+                                <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                                     <div className="flex items-center gap-2 text-gray-500">
+                                        <BookOpen className="w-4 h-4" />
+                                        <span className="text-xs font-black uppercase tracking-widest">కుటుంబ కథ (Telugu)</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap font-telugu">
+                                        {selectedMember.storyTe}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Family Tree Connections */}
+                    <div>
+                         <div className="flex items-center gap-2 mb-4">
+                            <UsersRound className="w-5 h-5 text-indigo-500" />
+                            <h3 className="font-bold text-gray-900 dark:text-white">Family Connections</h3>
+                         </div>
+                         
+                         <div className="space-y-3">
+                            {/* Parents */}
+                            {selectedMember.parents.length > 0 && (
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                        <Users className="w-4 h-4 text-gray-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Parents</p>
+                                        <div className="flex flex-wrap gap-2 mt-0.5">
+                                            {selectedMember.parents.map(p => (
+                                                <span key={p._id} className="font-bold text-sm text-gray-800 dark:text-gray-200">{p.name}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Spouse */}
+                            {selectedMember.spouse && (
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-50/50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-900/20">
+                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                        <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-bold text-pink-400 uppercase">Spouse</p>
+                                        <p className="font-bold text-sm text-pink-700 dark:text-pink-300">{selectedMember.spouse.name}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Children */}
+                            {selectedMember.children.length > 0 && (
+                                 <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/20">
+                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                        <Baby className="w-4 h-4 text-indigo-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">Children</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedMember.children.map(c => (
+                                                <span key={c._id} className="px-2.5 py-1 bg-white dark:bg-gray-800 rounded-md text-xs font-bold text-indigo-900 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-900/30">
+                                                    {c.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                         </div>
+                    </div>
+                </div>
+              </div>
             </Modal>
           )}
         </AnimatePresence>
+
         <FamilyStory 
           isOpen={isStoryOpen} 
           onClose={() => setIsStoryOpen(false)} 
         />
-      </motion.div>
+      </div>
     </Layout>
   );
 };
