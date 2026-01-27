@@ -46,14 +46,6 @@ export const initSocket = (server, allowedOrigins) => {
 
       socket.emit("all-users", otherUsers);
       
-      // Broadcast to others that this user joined
-      socket.to(roomName).emit("user-joined", {
-        signal: null, // Initial contact doesn't need signal
-        callerId: socket.id,
-        name: userName,
-        avatar: userAvatar
-      });
-
       // Update global call status
       io.emit("call-status-update", {
         hasOngoingCalls: rooms.size > 0 && Array.from(rooms.values()).some(r => r.size > 0)

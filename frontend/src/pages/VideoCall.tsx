@@ -103,11 +103,17 @@ export const VideoCall: React.FC = () => {
 
     try {
       console.log("Requesting media devices...");
+      
+      // Stop any existing stream before starting a new one
+      if (userStream) {
+        userStream.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 640 }, // Lowering ideal for better compatibility
+          height: { ideal: 480 }
         },
         audio: true
       });
@@ -126,56 +132,6 @@ export const VideoCall: React.FC = () => {
         userAvatar: user?.avatar
       });
 
-      socket.on("all-users", (users: { id: string, name: string, avatar: string }[]) => {
-        const peers: PeerState[] = [];
-        users.forEach(u => {
-          const peer = createPeer(u.id, stream);
-          peersRef.current.push({
-            peerID: u.id,
-            peer,
-            name: u.name,
-            avatar: u.avatar
-          });
-          peers.push({
-            peerID: u.id,
-            peer,
-            name: u.name,
-            avatar: u.avatar
-          });
-        });
-        setPeers(peers);
-      });
-
-      socket.on("user-joined", (payload: { signal: any, callerId: string, name: string, avatar: string }) => {
-        const peer = addPeer(payload.signal, payload.callerId, stream);
-        const peerObj = {
-          peerID: payload.callerId,
-          peer,
-          name: payload.name,
-          avatar: payload.avatar
-        };
-        peersRef.current.push(peerObj);
-        setPeers(prev => [...prev, peerObj]);
-      });
-
-      socket.on("receiving-returned-signal", (payload: { signal: any, id: string }) => {
-        const item = peersRef.current.find(p => p.peerID === payload.id);
-        if (item) {
-          item.peer.signal(payload.signal);
-        }
-      });
-
-      socket.on("user-left", (id: string) => {
-        const peerObj = peersRef.current.find(p => p.peerID === id);
-        if (peerObj) {
-          peerObj.peer.destroy();
-        }
-        const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
-        peersRef.current = filteredPeers;
-        setPeers(filteredPeers);
-        if (pinnedUserId === id) setPinnedUserId(null);
-      });
-
     } catch (err: any) {
       console.error("Failed to get media devices:", err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -190,6 +146,80 @@ export const VideoCall: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!inCall || !userStream) return;
+
+    const handleAllUsers = (users: { id: string, name: string, avatar: string }[]) => {
+      const newPeers: PeerState[] = [];
+      users.forEach(u => {
+        if (peersRef.current.find(p => p.peerID === u.id)) return;
+        
+        const peer = createPeer(u.id, userStream);
+        const peerObj = {
+          peerID: u.id,
+          peer,
+          name: u.name,
+          avatar: u.avatar
+        };
+        peersRef.current.push(peerObj);
+        newPeers.push(peerObj);
+      });
+      setPeers(prev => [...prev, ...newPeers]);
+    };
+
+    const handleUserJoined = (payload: { signal: any, callerId: string, name: string, avatar: string }) => {
+      const existingPeer = peersRef.current.find(p => p.peerID === payload.callerId);
+      if (existingPeer) {
+        if (payload.signal) existingPeer.peer.signal(payload.signal);
+        return;
+      }
+
+      const peer = addPeer(payload.signal, payload.callerId, userStream);
+      const peerObj = {
+        peerID: payload.callerId,
+        peer,
+        name: payload.name,
+        avatar: payload.avatar
+      };
+      peersRef.current.push(peerObj);
+      setPeers(prev => [...prev, peerObj]);
+    };
+
+    const handleReturnedSignal = (payload: { signal: any, id: string }) => {
+      const item = peersRef.current.find(p => p.peerID === payload.id);
+      if (item && payload.signal) {
+        try {
+          item.peer.signal(payload.signal);
+        } catch (err) {
+          console.error("Error signaling peer:", err);
+        }
+      }
+    };
+
+    const handleUserLeft = (id: string) => {
+      const peerObj = peersRef.current.find(p => p.peerID === id);
+      if (peerObj) {
+        peerObj.peer.destroy();
+      }
+      const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
+      peersRef.current = filteredPeers;
+      setPeers(filteredPeers);
+      if (pinnedUserId === id) setPinnedUserId(null);
+    };
+
+    socket.on("all-users", handleAllUsers);
+    socket.on("user-joined", handleUserJoined);
+    socket.on("receiving-returned-signal", handleReturnedSignal);
+    socket.on("user-left", handleUserLeft);
+
+    return () => {
+      socket.off("all-users", handleAllUsers);
+      socket.off("user-joined", handleUserJoined);
+      socket.off("receiving-returned-signal", handleReturnedSignal);
+      socket.off("user-left", handleUserLeft);
+    };
+  }, [inCall, userStream, pinnedUserId]);
+
   const createPeer = (userToSignal: string, stream: MediaStream) => {
     const peer = new Peer({
       initiator: true,
@@ -198,11 +228,17 @@ export const VideoCall: React.FC = () => {
     });
 
     peer.on("signal", signal => {
-      socket.emit("sending-signal", { userToSignal, callerId: socket.id, signal });
+      if (socket.id) {
+        socket.emit("sending-signal", { userToSignal, callerId: socket.id, signal });
+      }
     });
 
     peer.on("stream", stream => {
       updatePeerStream(userToSignal, stream);
+    });
+
+    peer.on("error", err => {
+      console.error("Peer error:", err);
     });
 
     return peer;
@@ -220,17 +256,33 @@ export const VideoCall: React.FC = () => {
     });
 
     if (incomingSignal) {
-      peer.signal(incomingSignal);
+      try {
+        peer.signal(incomingSignal);
+      } catch (err) {
+        console.error("Error setting incoming signal:", err);
+      }
     }
 
     peer.on("stream", stream => {
       updatePeerStream(callerId, stream);
     });
 
+    peer.on("error", err => {
+      console.error("Peer error:", err);
+    });
+
     return peer;
   };
 
   const updatePeerStream = (peerID: string, stream: MediaStream) => {
+    // Update both state and ref
+    peersRef.current = peersRef.current.map(p => {
+      if (p.peerID === peerID) {
+        return { ...p, stream };
+      }
+      return p;
+    });
+
     setPeers(prev => prev.map(p => {
       if (p.peerID === peerID) {
         return { ...p, stream };
