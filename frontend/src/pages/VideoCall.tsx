@@ -331,21 +331,7 @@ export const VideoCall: React.FC = () => {
      return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-// ============================================
-// TYPES
-// ============================================
-interface PeerData {
-  peerId: string;
-  peer: Peer.Instance;
-  userName: string;
-  userAvatar?: string;
-  stream?: MediaStream;
-}
 
-interface ActiveRoom {
-  name: string;
-  count: number;
-}
 
 // ============================================
 // ACTIONS
