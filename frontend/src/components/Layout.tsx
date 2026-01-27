@@ -236,68 +236,70 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-large safe-bottom z-40 transition-colors duration-300">
-        <div className="flex justify-around items-center h-16">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 shadow-lg safe-bottom z-50 transition-all duration-300">
+        <div className="flex justify-around items-center h-16 max-w-md mx-auto w-full">
           {navigationItems.map((item) => {
             const Icon = item.icon;
+            const isItemActive = isActive(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center flex-1 h-full tap-target transition-all duration-200 relative ${
-                  isActive(item.path)
+                className={`flex flex-col items-center justify-center flex-1 h-full tap-target transition-colors duration-200 relative group ${
+                  isItemActive
                     ? 'text-accent-blue'
-                    : 'text-gray-500 dark:text-gray-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="relative"
-                >
-                  <Icon className="w-5 h-5 mb-1" />
-                  {item.path === '/call' && hasOngoingCalls && (
-                    <span className="absolute -top-1 -right-2 bg-red-500 text-[7px] font-black text-white px-1 rounded-full animate-pulse border border-white dark:border-gray-800">
-                      LIVE
-                    </span>
-                  )}
-                </motion.div>
-                <span className="text-xs font-medium">{t(item.labelKey)}</span>
-                {isActive(item.path) && (
+                <div className="relative p-1 flex flex-col items-center justify-center">
                   <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute bottom-0 left-0 right-0 h-1 bg-accent-blue rounded-t-full"
-                    initial={false}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  />
-                )}
+                    animate={{ 
+                        scale: isItemActive ? 1.2 : 1,
+                        y: isItemActive ? -2 : 0
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="relative"
+                  >
+                    <Icon className={`w-6 h-6 mb-1 ${isItemActive ? 'stroke-[2.5px] drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]' : ''}`} />
+                    
+                    {item.path === '/call' && hasOngoingCalls && (
+                        <span className="absolute -top-0.5 -right-1 bg-red-500 text-[8px] font-black text-white px-1 rounded-full animate-pulse border border-white dark:border-gray-800 shadow-sm">
+                        LIVE
+                        </span>
+                    )}
+                  </motion.div>
+                </div>
+                <span className={`text-[10px] font-medium transition-opacity duration-200 ${isItemActive ? 'opacity-100 font-bold' : 'opacity-70'}`}>
+                    {t(item.labelKey)}
+                </span>
+                
+                {/* Removed Bar Indicator */}
               </Link>
             );
           })}
           {isAdmin() && (
             <Link
               to="/admin"
-              className={`flex flex-col items-center justify-center flex-1 h-full tap-target transition-all duration-200 relative ${
+              className={`flex flex-col items-center justify-center flex-1 h-full tap-target transition-colors duration-200 relative group ${
                 isActive('/admin')
                   ? 'text-accent-blue'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <Settings className="w-5 h-5 mb-1" />
-              </motion.div>
-              <span className="text-xs font-medium">{t('nav.admin')}</span>
-              {isActive('/admin') && (
-                <motion.div
-                  layoutId="activeIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-accent-blue rounded-t-full"
-                  initial={false}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
+               <div className="relative p-1 flex flex-col items-center justify-center">
+                  <motion.div
+                    animate={{ 
+                        scale: isActive('/admin') ? 1.2 : 1,
+                        y: isActive('/admin') ? -2 : 0
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <Settings className={`w-6 h-6 mb-1 ${isActive('/admin') ? 'stroke-[2.5px] drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]' : ''}`} />
+                  </motion.div>
+               </div>
+              <span className={`text-[10px] font-medium transition-opacity duration-200 ${isActive('/admin') ? 'opacity-100 font-bold' : 'opacity-70'}`}>
+                  {t('nav.admin')}
+              </span>
             </Link>
           )}
         </div>

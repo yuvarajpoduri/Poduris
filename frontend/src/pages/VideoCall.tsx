@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { socket } from "../utils/socket";
 import { 
   Video, Mic, MicOff, VideoOff, Phone, 
-  Users, Activity, ArrowRight, ShieldCheck, 
+  Activity, ArrowRight, ShieldCheck, 
   Smartphone, Globe 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,7 +53,6 @@ export const VideoCall: React.FC = () => {
   // --- Refs ---
   const peersRef = useRef<PeerData[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const socketRef = useRef<any>(socket);
 
   // ============================================
   // LOBBY: Participant Presence
@@ -152,7 +151,7 @@ export const VideoCall: React.FC = () => {
   // ============================================
   // WEBRTC: Peer Logic
   // ============================================
-  const createPeer = (userToSignal: string, callerId: string, stream: MediaStream, isInitiator: boolean) => {
+  const createPeer = (userToSignal: string, callerId: string, stream: MediaStream, isInitiator: boolean, incomingSignal?: any) => {
     const peer = new Peer({
         initiator: isInitiator,
         trickle: false,
@@ -181,6 +180,11 @@ export const VideoCall: React.FC = () => {
         console.error("Peer Error:", err);
     });
 
+    // Handle incoming signal immediately for non-initiators provided at creation
+    if (!isInitiator && incomingSignal) {
+        peer.signal(incomingSignal);
+    }
+
     return peer;
   };
 
@@ -200,10 +204,11 @@ export const VideoCall: React.FC = () => {
       // Socket Listeners for Signaling
       socket.on('all-users', (usersInRoom: any[]) => {
           const peersArr: PeerData[] = [];
+          const myId = socket.id || "unknown"; // Fallback to avoid TS error
           
           usersInRoom.forEach(userID => {
               // Create peer as initiator
-              const peer = createPeer(userID.id, socket.id, stream, true);
+              const peer = createPeer(userID.id, myId, stream, true);
               peersArr.push({
                   peerId: userID.id,
                   peer,
@@ -217,11 +222,9 @@ export const VideoCall: React.FC = () => {
       });
 
       socket.on('user-joined', (payload: any) => {
-          const peer = createPeer(payload.callerId, socket.id, stream, false);
+          const myId = socket.id || "unknown";
+          const peer = createPeer(payload.callerId, myId, stream, false, payload.signal);
           
-          // Accept the signal immediately as we are the receiver
-          peer.signal(payload.signal);
-
           const peerObj = {
               peerId: payload.callerId,
               peer,
@@ -239,6 +242,7 @@ export const VideoCall: React.FC = () => {
               item.peer.signal(payload.signal);
           }
       });
+
 
       socket.on('user-left', (id: string) => {
           const item = peersRef.current.find(p => p.peerId === id);
