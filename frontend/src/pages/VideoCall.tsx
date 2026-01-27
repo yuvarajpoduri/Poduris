@@ -5,7 +5,7 @@ import Peer from "simple-peer";
 import { 
   Video, VideoOff, Mic, MicOff, Phone, 
   Users, Plus, 
-  Pin, PinOff, Monitor, Settings
+  Pin, PinOff, Monitor, Settings, ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPoduriName } from "../utils/formatUtils";
@@ -50,6 +50,7 @@ export const VideoCall: React.FC = () => {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [pinnedUserId, setPinnedUserId] = useState<string | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [activeRooms, setActiveRooms] = useState<{ name: string, count: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const socketIdRef = useRef<string>();
@@ -67,11 +68,22 @@ export const VideoCall: React.FC = () => {
       stopStream();
     });
 
+    socket.on("active-rooms-update", (rooms: { name: string, count: number }[]) => {
+      setActiveRooms(rooms);
+    });
+
+    socket.emit("get-active-rooms");
+    const interval = setInterval(() => {
+      if (!inCall) socket.emit("get-active-rooms");
+    }, 5000);
+
     return () => {
       socket.off("room-full");
+      socket.off("active-rooms-update");
+      clearInterval(interval);
       stopStream();
     };
-  }, []);
+  }, [inCall]);
 
   const stopStream = () => {
     if (userStream) {
@@ -84,12 +96,23 @@ export const VideoCall: React.FC = () => {
     if (!roomName.trim()) return;
     setError(null);
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("Camera/Microphone access is not supported by your browser or requires a secure (HTTPS) connection.");
+      return;
+    }
+
     try {
+      console.log("Requesting media devices...");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: true
       });
 
+      console.log("Media stream obtained:", stream.id);
       setUserStream(stream);
       if (userVideoRef.current) {
         userVideoRef.current.srcObject = stream;
@@ -153,9 +176,17 @@ export const VideoCall: React.FC = () => {
         if (pinnedUserId === id) setPinnedUserId(null);
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to get media devices:", err);
-      setError("Could not access camera/microphone. Please check permissions.");
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError("Camera/Microphone permission denied. Please enable it in settings.");
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError("No camera or microphone found on this device.");
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setError("Camera/Microphone is already in use by another app.");
+      } else {
+        setError(`Error: ${err.message || "Could not access camera/microphone. Please check permissions."}`);
+      }
     }
   };
 
@@ -381,10 +412,51 @@ export const VideoCall: React.FC = () => {
                  </div>
                </div>
 
+               {activeRooms.length > 0 && (
+                 <div className="space-y-3">
+                   <p className="text-xs font-bold text-white/40 uppercase tracking-widest px-2">Active Family Rooms</p>
+                   <div className="grid grid-cols-1 gap-2">
+                     {activeRooms.map((room) => (
+                       <button
+                         key={room.name}
+                         onClick={() => {
+                           setRoomName(room.name);
+                         }}
+                         className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                       >
+                         <div className="flex items-center space-x-3">
+                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
+                           <span className="font-bold text-white/80 group-hover:text-white">{room.name}</span>
+                         </div>
+                         <div className="flex items-center space-x-2">
+                           <span className="text-xs font-bold text-white/40">{room.count}/8 Joined</span>
+                           <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-accent-blue group-hover:translate-x-1 transition-all" />
+                         </div>
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
                {error && (
-                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-center font-bold text-sm bg-red-400/10 py-3 rounded-2xl border border-red-400/20">
-                   {error}
-                 </motion.p>
+                 <motion.div 
+                   initial={{ opacity: 0, y: 10 }} 
+                   animate={{ opacity: 1, y: 0 }} 
+                   className="space-y-3"
+                 >
+                   <div className="bg-red-400/10 p-4 rounded-2xl border border-red-400/20">
+                     <p className="text-red-400 text-center font-bold text-sm">
+                       {error}
+                     </p>
+                     {error.includes("camera/microphone") && (
+                       <div className="mt-3 text-[10px] text-red-400/60 font-medium leading-relaxed">
+                         <p>• Ensure your browser has permission.</p>
+                         <p>• For APK: Go to Phone Settings → Apps → Poduris → Permissions → Enable Camera & Microphone.</p>
+                         <p>• Make sure no other app is using the camera.</p>
+                       </div>
+                     )}
+                   </div>
+                 </motion.div>
                )}
 
                <button
@@ -392,7 +464,7 @@ export const VideoCall: React.FC = () => {
                  disabled={!roomName.trim()}
                  className="w-full bg-gradient-to-tr from-accent-blue to-indigo-600 hover:from-accent-blue/90 hover:to-indigo-600/90 disabled:opacity-30 disabled:cursor-not-allowed py-5 rounded-3xl font-black text-xl shadow-2xl shadow-accent-blue/20 transition-all active:scale-95 flex items-center justify-center space-x-3"
                >
-                 <span>Start Connection</span>
+                 <span>{activeRooms.some(r => r.name === roomName) ? "Join Connection" : "Start Connection"}</span>
                  <Plus className="w-6 h-6" />
                </button>
             </div>

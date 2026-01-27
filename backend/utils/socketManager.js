@@ -103,6 +103,16 @@ export const initSocket = (server, allowedOrigins) => {
         hasOngoingCalls: rooms.size > 0 && Array.from(rooms.values()).some(r => r.size > 0)
       });
     });
+
+    socket.on("get-active-rooms", () => {
+      const activeRooms = Array.from(rooms.entries())
+        .filter(([_, set]) => set.size > 0)
+        .map(([name, set]) => ({
+          name,
+          count: set.size
+        }));
+      socket.emit("active-rooms-update", activeRooms);
+    });
   });
 
   return io;

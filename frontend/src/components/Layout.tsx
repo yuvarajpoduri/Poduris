@@ -93,7 +93,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="relative">
                     <Icon className="w-4 h-4" />
                     {item.path === '/call' && hasOngoingCalls && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800 animate-pulse" />
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-[8px] font-black text-white px-1 rounded-full animate-pulse border border-white dark:border-gray-800">
+                        LIVE
+                      </span>
                     )}
                   </div>
                   <span>{t(item.labelKey)}</span>
@@ -255,7 +257,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Icon className="w-5 h-5 mb-1" />
                   {item.path === '/call' && hasOngoingCalls && (
-                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
+                    <span className="absolute -top-1 -right-2 bg-red-500 text-[7px] font-black text-white px-1 rounded-full animate-pulse border border-white dark:border-gray-800">
+                      LIVE
+                    </span>
                   )}
                 </motion.div>
                 <span className="text-xs font-medium">{t(item.labelKey)}</span>
