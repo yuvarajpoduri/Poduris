@@ -9,14 +9,21 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPoduriName } from "../utils/formatUtils";
 import { Buffer } from 'buffer';
+import process from 'process';
 
 // ============================================
-// POLYFILLS - Mandatory for WebView/APK
+// POLYFILLS - CRITICAL FOR VITE + SIMPLE-PEER
 // ============================================
 if (typeof window !== 'undefined') {
-  (window as any).global = window;
-  (window as any).Buffer = Buffer;
-  (window as any).process = { env: {}, browser: true };
+    if ((window as any).global === undefined) {
+        (window as any).global = window;
+    }
+    if ((window as any).process === undefined) {
+        (window as any).process = process;
+    }
+    if ((window as any).Buffer === undefined) {
+        (window as any).Buffer = Buffer;
+    }
 }
 
 // ============================================
@@ -324,9 +331,25 @@ export const VideoCall: React.FC = () => {
      return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // ============================================
-  // ACTIONS
-  // ============================================
+// ============================================
+// TYPES
+// ============================================
+interface PeerData {
+  peerId: string;
+  peer: Peer.Instance;
+  userName: string;
+  userAvatar?: string;
+  stream?: MediaStream;
+}
+
+interface ActiveRoom {
+  name: string;
+  count: number;
+}
+
+// ============================================
+// ACTIONS
+// ============================================
   const joinVideoCall = async () => {
     setError(null);
     setPhase('connecting');
@@ -335,12 +358,14 @@ export const VideoCall: React.FC = () => {
 
     try {
         console.log('[VideoCall] Requesting media access...');
-        // Request lower resolution for mobile stability
+        
+        // Relaxed constraints for better mobile compatibility
+        // Uses 'ideal' constraints instead of strict ones to avoid OverconstrainedError
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
-                width: { ideal: 480 },
-                height: { ideal: 640 },
                 facingMode: "user",
+                width: { ideal: 640 },
+                height: { ideal: 480 },
                 frameRate: { ideal: 24 }
             },
             audio: {
@@ -364,9 +389,11 @@ export const VideoCall: React.FC = () => {
     } catch (err: any) {
         console.error('Media Error:', err);
         setPhase('lobby');
-        if (err.name === 'NotAllowedError') setError("Camera access denied. Please allow permissions.");
-        else if (err.name === 'NotFoundError') setError("No camera found.");
-        else setError("Could not access camera. Close other apps.");
+        if (err.name === 'NotAllowedError') setError("Camera access denied. Please allow permissions in settings.");
+        else if (err.name === 'NotFoundError') setError("No camera found/detected.");
+        else if (err.name === 'NotReadableError') setError("Camera is in use. Close other apps using camera.");
+        else if (err.name === 'OverconstrainedError') setError("Camera resolution not supported.");
+        else setError(`Unable to access camera: ${err.message}`);
     }
   };
 
