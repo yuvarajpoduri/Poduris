@@ -56,6 +56,7 @@ export const VideoCall: React.FC = () => {
   const socketIdRef = useRef<string>();
   const peersRef = useRef<PeerState[]>([]);
   const userVideoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -77,18 +78,48 @@ export const VideoCall: React.FC = () => {
       if (!inCall) socket.emit("get-active-rooms");
     }, 5000);
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && inCall) {
+        // Optional: Can either end call or just mute/stop video
+        console.log("App hidden, cleaning up...");
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      stopStream();
+      socket.emit("leave-room");
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
     return () => {
       socket.off("room-full");
       socket.off("active-rooms-update");
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
       clearInterval(interval);
       stopStream();
     };
   }, [inCall]);
 
   const stopStream = () => {
+    console.log("Stopping all media tracks...");
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Stopped track: ${track.kind}`);
+      });
+      streamRef.current = null;
+    }
     if (userStream) {
       userStream.getTracks().forEach(track => track.stop());
       setUserStream(null);
+    }
+    if (userVideoRef.current) {
+      userVideoRef.current.srcObject = null;
     }
   };
 
@@ -105,23 +136,35 @@ export const VideoCall: React.FC = () => {
       console.log("Requesting media devices...");
       
       // Stop any existing stream before starting a new one
-      if (userStream) {
-        userStream.getTracks().forEach(track => track.stop());
+      stopStream();
+
+      // Explicitly check for support
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("MediaDevices.getUserMedia is not supported on this browser.");
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 640 }, // Lowering ideal for better compatibility
-          height: { ideal: 480 }
+          width: { min: 320, ideal: 640, max: 1280 },
+          height: { min: 240, ideal: 480, max: 720 },
+          frameRate: { ideal: 24, max: 30 }
         },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
       });
 
       console.log("Media stream obtained:", stream.id);
+      streamRef.current = stream;
       setUserStream(stream);
+      
       if (userVideoRef.current) {
         userVideoRef.current.srcObject = stream;
+        // WebView trick: play explicitly if autoPlay fails
+        userVideoRef.current.play().catch(e => console.error("Auto-play failed:", e));
       }
 
       setInCall(true);
@@ -134,15 +177,22 @@ export const VideoCall: React.FC = () => {
 
     } catch (err: any) {
       console.error("Failed to get media devices:", err);
+      let errorMsg = "Could not access camera/microphone.";
+      
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError("Camera/Microphone permission denied. Please enable it in settings.");
+        errorMsg = "Camera/Microphone permission denied. Please allow access in your phone settings → Apps → Poduris.";
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setError("No camera or microphone found on this device.");
+        errorMsg = "No camera or microphone found on this device.";
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        setError("Camera/Microphone is already in use by another app.");
-      } else {
-        setError(`Error: ${err.message || "Could not access camera/microphone. Please check permissions."}`);
+        errorMsg = "Camera or microphone is already in use by another app. Please close other camera apps (like WhatsApp/System Camera).";
+        // Force stop tracks anyway if something hung
+        stopStream();
+      } else if (err.message) {
+        errorMsg = err.message;
       }
+      
+      setError(errorMsg);
+      setInCall(false);
     }
   };
 
@@ -225,6 +275,15 @@ export const VideoCall: React.FC = () => {
       initiator: true,
       trickle: false,
       stream,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+        ]
+      }
     });
 
     peer.on("signal", signal => {
@@ -249,6 +308,15 @@ export const VideoCall: React.FC = () => {
       initiator: false,
       trickle: false,
       stream,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+        ]
+      }
     });
 
     peer.on("signal", signal => {
@@ -292,14 +360,28 @@ export const VideoCall: React.FC = () => {
   };
 
   const endCall = () => {
-    stopStream();
+    console.log("Ending call and cleaning up...");
     socket.emit("leave-room");
-    peersRef.current.forEach(p => p.peer.destroy());
+    
+    // Destroy all peer connections
+    peersRef.current.forEach(p => {
+      try {
+        p.peer.destroy();
+      } catch (err) {
+        console.error("Error destroying peer:", err);
+      }
+    });
+    
     peersRef.current = [];
     setPeers([]);
+    
+    // Stop local stream
+    stopStream();
+    
     setInCall(false);
     setPinnedUserId(null);
     setIsScreenSharing(false);
+    setError(null);
   };
 
   const toggleMute = () => {
@@ -353,8 +435,8 @@ export const VideoCall: React.FC = () => {
   };
 
   const stopScreenShare = () => {
-    if (userStream && userVideoRef.current) {
-      userVideoRef.current.srcObject = userStream;
+    if (streamRef.current && userVideoRef.current) {
+      userVideoRef.current.srcObject = streamRef.current;
       setIsScreenSharing(false);
     }
   };
