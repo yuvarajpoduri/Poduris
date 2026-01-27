@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useRef } from 'react';
+import React, { ReactNode, useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,11 +11,13 @@ import {
   Users, 
   Calendar as CalendarIcon, 
   Image as Images, 
+  Video,
   Settings,
   Bell,
   LogOut
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { socket } from '../utils/socket';
 
 interface LayoutProps {
   children: ReactNode;
@@ -26,6 +28,7 @@ const navigationItems = [
   { path: '/family', labelKey: 'nav.family', icon: Users },
   { path: '/calendar', labelKey: 'nav.calendar', icon: CalendarIcon },
   { path: '/gallery', labelKey: 'nav.gallery', icon: Images },
+  { path: '/call', labelKey: 'nav.call', icon: Video },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -35,7 +38,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [hasOngoingCalls, setHasOngoingCalls] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    socket.on("call-status-update", ({ hasOngoingCalls }) => {
+      setHasOngoingCalls(hasOngoingCalls);
+    });
+
+    socket.emit("get-call-status");
+
+    return () => {
+      socket.off("call-status-update");
+    };
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -74,8 +90,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-black dark:hover:text-white'
                     }`}
                   >
+                  <div className="relative">
                     <Icon className="w-4 h-4" />
-                    <span>{t(item.labelKey)}</span>
+                    {item.path === '/call' && hasOngoingCalls && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800 animate-pulse" />
+                    )}
+                  </div>
+                  <span>{t(item.labelKey)}</span>
                   </Link>
                 );
               })}
@@ -230,8 +251,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <motion.div
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  className="relative"
                 >
                   <Icon className="w-5 h-5 mb-1" />
+                  {item.path === '/call' && hasOngoingCalls && (
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse" />
+                  )}
                 </motion.div>
                 <span className="text-xs font-medium">{t(item.labelKey)}</span>
                 {isActive(item.path) && (

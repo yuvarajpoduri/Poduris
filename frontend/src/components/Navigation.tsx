@@ -7,8 +7,9 @@ const navigationItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
   { path: '/calendar', label: 'Calendar', icon: '📅' },
-  { path: '/gallery', label: 'Gallery', icon: '🖼️' },
-  { path: '/announcements', label: 'Announcements', icon: '📢' },
+  { path: '/gallery', label: 'Memories', icon: '🖼️' },
+  { path: '/call', label: 'Studio', icon: '📹' },
+  { path: '/announcements', label: 'Voices', icon: '📢' },
 ];
 
 export const Navigation: React.FC = () => {
@@ -94,7 +95,7 @@ export const Navigation: React.FC = () => {
 
       {/* Mobile Navigation - Bottom Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 safe-bottom">
-        <div className="grid grid-cols-5 h-16">
+        <div className="grid grid-cols-6 h-16">
           {navigationItems.map((item) => (
             <Link
               key={item.path}

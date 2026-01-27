@@ -139,8 +139,13 @@ app.use(errorHandler);
 /* =======================
    START SERVER
 ======================= */
-const PORT = process.env.PORT || 5000;
+import { createServer } from "http";
+import { initSocket } from "./utils/socketManager.js";
 
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5000;
+const httpServer = createServer(app);
+initSocket(httpServer, allowedOrigins);
+
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

@@ -15,6 +15,7 @@ import { Gallery } from './pages/Gallery';
 import { Admin } from './pages/Admin';
 import { Chat } from './components/Chat';
 import { Profile } from './pages/Profile';
+import { VideoCall } from './pages/VideoCall';
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
@@ -60,6 +61,14 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <Gallery />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/call"
+          element={
+            <ProtectedRoute>
+              <VideoCall />
             </ProtectedRoute>
           }
         />
