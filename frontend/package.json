@@ -10,6 +10,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@jitsi/react-sdk": "^1.4.4",
     "@types/simple-peer": "^9.11.9",
     "axios": "^1.6.2",
     "buffer": "^6.0.3",
