@@ -110,8 +110,8 @@ export const FamilyView: React.FC = () => {
           </button>
         </div>
 
-        {/* Controls - NOT STICKY ANYMORE */}
-        <div className="mb-8 space-y-3 z-40 relative">
+        {/* Controls - Normal Flow (Not Sticky) */}
+        <div className="mb-8 space-y-3 relative">
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 flex gap-2 overflow-x-auto no-scrollbar">
              <button
                 onClick={() => setSelectedGeneration(null)}
@@ -146,12 +146,12 @@ export const FamilyView: React.FC = () => {
                  placeholder="Search members..." 
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
-                 className="w-full bg-white dark:bg-gray-800 border-none rounded-xl py-3 pl-10 pr-4 font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 focus:ring-indigo-500 transition-all"
+                 className="w-full bg-white dark:bg-gray-900 border-none rounded-xl py-3 pl-10 pr-4 font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 focus:ring-indigo-500 transition-all"
                />
             </div>
              <button
                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-               className="px-4 bg-white dark:bg-gray-800 rounded-xl font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300"
+               className="px-4 bg-white dark:bg-gray-900 rounded-xl font-bold text-sm shadow-sm ring-1 ring-gray-100 dark:ring-white/5 flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300"
              >
                <Filter className="w-4 h-4" />
                {sortOrder === 'desc' ? 'Desc' : 'Asc'}

@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 
 // ============================================
-// VOICE CALL SOCKET MANAGER
+// VIDEO CALL SOCKET MANAGER
 // Supports up to 8 participants per room
 // ============================================
 
@@ -50,7 +50,7 @@ export const initSocket = (server, allowedOrigins) => {
   // SOCKET CONNECTION HANDLER
   // ============================================
   io.on("connection", (socket) => {
-    console.log("[VoiceCall] Client connected:", socket.id);
+    console.log("[VideoCall] Client connected:", socket.id);
     
     // Send current active rooms to new client
     broadcastActiveRooms();
@@ -59,7 +59,7 @@ export const initSocket = (server, allowedOrigins) => {
     // JOIN ROOM
     // ------------------------------------
     socket.on("join-room", ({ roomName, userName, userAvatar }) => {
-      console.log(`[VoiceCall] ${userName} attempting to join room: ${roomName}`);
+      console.log(`[VideoCall] ${userName} attempting to join room: ${roomName}`);
       
       // Initialize room if it doesn't exist
       if (!rooms.has(roomName)) {
@@ -70,7 +70,7 @@ export const initSocket = (server, allowedOrigins) => {
 
       // Check room capacity
       if (room.size >= MAX_PARTICIPANTS) {
-        console.log(`[VoiceCall] Room ${roomName} is full`);
+        console.log(`[VideoCall] Room ${roomName} is full`);
         socket.emit("room-full", { roomName });
         return;
       }
@@ -87,7 +87,7 @@ export const initSocket = (server, allowedOrigins) => {
       socket.userName = userName;
       socket.userAvatar = userAvatar;
 
-      console.log(`[VoiceCall] ${userName} joined room ${roomName} (${room.size}/${MAX_PARTICIPANTS})`);
+      console.log(`[VideoCall] ${userName} joined room ${roomName} (${room.size}/${MAX_PARTICIPANTS})`);
 
       // Get list of other users in the room (for the new joiner to connect to)
       const otherUsers = [];
@@ -117,7 +117,7 @@ export const initSocket = (server, allowedOrigins) => {
     // WEBRTC SIGNALING: Send Offer
     // ------------------------------------
     socket.on("sending-signal", (payload) => {
-      console.log(`[VoiceCall] Signal from ${socket.id} to ${payload.userToSignal}`);
+      console.log(`[VideoCall] Signal from ${socket.id} to ${payload.userToSignal}`);
       
       io.to(payload.userToSignal).emit("user-joined", {
         signal: payload.signal,
@@ -131,7 +131,7 @@ export const initSocket = (server, allowedOrigins) => {
     // WEBRTC SIGNALING: Return Answer
     // ------------------------------------
     socket.on("returning-signal", (payload) => {
-      console.log(`[VoiceCall] Return signal from ${socket.id} to ${payload.callerId}`);
+      console.log(`[VideoCall] Return signal from ${socket.id} to ${payload.callerId}`);
       
       io.to(payload.callerId).emit("receiving-returned-signal", {
         signal: payload.signal,
@@ -149,7 +149,7 @@ export const initSocket = (server, allowedOrigins) => {
       const room = rooms.get(roomName);
       room.delete(sock.id);
       
-      console.log(`[VoiceCall] ${sock.userName || sock.id} left room ${roomName}`);
+      console.log(`[VideoCall] ${sock.userName || sock.id} left room ${roomName}`);
 
       // Notify others in room
       sock.to(roomName).emit("user-left", sock.id);
@@ -158,7 +158,7 @@ export const initSocket = (server, allowedOrigins) => {
       // Clean up empty rooms
       if (room.size === 0) {
         rooms.delete(roomName);
-        console.log(`[VoiceCall] Room ${roomName} deleted (empty)`);
+        console.log(`[VideoCall] Room ${roomName} deleted (empty)`);
       }
 
       sock.currentRoom = null;
@@ -196,10 +196,11 @@ export const initSocket = (server, allowedOrigins) => {
     // DISCONNECT
     // ------------------------------------
     socket.on("disconnect", (reason) => {
-      console.log(`[VoiceCall] Client disconnected: ${socket.id}, reason: ${reason}`);
+      console.log(`[VideoCall] Client disconnected: ${socket.id}, reason: ${reason}`);
       leaveCurrentRoom(socket);
     });
   });
 
   return io;
 };
+
