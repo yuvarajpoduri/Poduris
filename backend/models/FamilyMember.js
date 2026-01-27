@@ -92,6 +92,16 @@ const familyMemberSchema = new mongoose.Schema({
     default: '',
     trim: true
   },
+  storyEn: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  storyTe: {
+    type: String,
+    default: '',
+    trim: true
+  },
   lastActive: {
     type: Date,
     default: Date.now

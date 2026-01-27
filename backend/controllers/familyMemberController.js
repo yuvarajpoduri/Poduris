@@ -15,11 +15,26 @@ const formatDateOnly = (date) => {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 };
+// Caching for family members list
+let membersCache = null;
+let lastMembersUpdate = 0;
+const MEMBERS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
 export const getFamilyMembers = async (req, res, next) => {
   try {
     const { search } = req.query;
     let query = {};
     
+    // Check if we can use cache
+    if (!search && membersCache && (Date.now() - lastMembersUpdate < MEMBERS_CACHE_DURATION)) {
+      return res.status(200).json({
+        success: true,
+        count: membersCache.length,
+        data: membersCache,
+        cached: true
+      });
+    }
+
     // If search query is provided, search by name or email
     if (search && search.trim()) {
       const searchRegex = new RegExp(search.trim(), 'i');
@@ -32,6 +47,12 @@ export const getFamilyMembers = async (req, res, next) => {
     }
     
     const members = await FamilyMember.find(query).select('-password').sort({ generation: 1, id: 1 });
+
+    // Update cache if not a search
+    if (!search) {
+      membersCache = members;
+      lastMembersUpdate = Date.now();
+    }
 
     res.status(200).json({
       success: true,
@@ -144,11 +165,25 @@ export const getFamilyMembersByGeneration = async (req, res, next) => {
   }
 };
 
+// Simple in-memory cache for dashboard stats
+let statsCache = null;
+let lastCacheUpdate = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // @desc    Get dashboard statistics
 // @route   GET /api/family-members/stats/dashboard
 // @access  Private
 export const getDashboardStats = async (req, res, next) => {
   try {
+    const now = Date.now();
+    if (statsCache && (now - lastCacheUpdate < CACHE_DURATION)) {
+      return res.status(200).json({
+        success: true,
+        data: statsCache,
+        cached: true
+      });
+    }
+
     const allMembers = await FamilyMember.find().lean();
 
     const today = new Date();
@@ -228,14 +263,20 @@ export const getDashboardStats = async (req, res, next) => {
     upcomingBirthdays.sort((a, b) => a.daysUntil - b.daysUntil);
     upcomingAnniversaries.sort((a, b) => a.daysUntil - b.daysUntil);
 
+    const result = {
+      totalMembers,
+      totalGenerations,
+      upcomingBirthdays: upcomingBirthdays.slice(0, 5),
+      upcomingAnniversaries: upcomingAnniversaries.slice(0, 5),
+    };
+
+    // Update cache
+    statsCache = result;
+    lastCacheUpdate = Date.now();
+
     res.status(200).json({
       success: true,
-      data: {
-        totalMembers,
-        totalGenerations,
-        upcomingBirthdays: upcomingBirthdays.slice(0, 5),
-        upcomingAnniversaries: upcomingAnniversaries.slice(0, 5),
-      },
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -261,6 +302,9 @@ export const createFamilyMember = async (req, res, next) => {
       occupation,
       location,
       bio,
+      storyEn,
+      storyTe,
+      anniversaryDate,
     } = req.body;
 
     // Check for duplicate ID
@@ -310,7 +354,18 @@ export const createFamilyMember = async (req, res, next) => {
       occupation: occupation || "",
       location: location || "",
       bio: bio || "",
+      storyEn: storyEn || "",
+      storyTe: storyTe || "",
+      anniversaryDate: anniversaryDate || null,
     });
+
+    // Invalidate dashboard stats cache
+    statsCache = null;
+    lastCacheUpdate = 0;
+    
+    // Invalidate members cache
+    membersCache = null;
+    lastMembersUpdate = 0;
 
     res.status(201).json({
       success: true,
@@ -366,7 +421,7 @@ export const updateFamilyMember = async (req, res, next) => {
     if (!isAdmin) {
       // Members can only update: name, email, password, avatar, bio, location, occupation, anniversaryDate
       // They cannot update: id, birthDate, deathDate, gender, parentId, spouseId, generation
-      const allowedFields = ['name', 'nickname', 'email', 'password', 'avatar', 'bio', 'location', 'occupation', 'anniversaryDate'];
+      const allowedFields = ['name', 'nickname', 'email', 'password', 'avatar', 'bio', 'location', 'occupation', 'anniversaryDate', 'storyEn', 'storyTe'];
       Object.keys(updateData).forEach(key => {
         if (!allowedFields.includes(key)) {
           delete updateData[key];
@@ -428,6 +483,14 @@ export const updateFamilyMember = async (req, res, next) => {
       { new: true, runValidators: true }
     ).select('-password');
 
+    // Invalidate dashboard stats cache
+    statsCache = null;
+    lastCacheUpdate = 0;
+
+    // Invalidate members cache
+    membersCache = null;
+    lastMembersUpdate = 0;
+
     res.status(200).json({
       success: true,
       data: updatedMember,
@@ -466,6 +529,14 @@ export const deleteFamilyMember = async (req, res, next) => {
     }
 
     await FamilyMember.findByIdAndDelete(member._id);
+
+    // Invalidate dashboard stats cache
+    statsCache = null;
+    lastCacheUpdate = 0;
+
+    // Invalidate members cache
+    membersCache = null;
+    lastMembersUpdate = 0;
 
     res.status(200).json({
       success: true,

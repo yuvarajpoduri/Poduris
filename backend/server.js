@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
+import compression from "compression";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { trackActivity } from "./middlewares/trackActivity.js";
 
@@ -34,6 +35,7 @@ const __dirname = path.dirname(__filename);
 connectDB();
 
 const app = express();
+app.use(compression());
 
 /* =======================
    TRUST PROXY (REQUIRED)

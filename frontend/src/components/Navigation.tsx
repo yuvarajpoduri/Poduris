@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { formatPoduriName } from '../utils/formatUtils';
 
 const navigationItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -78,7 +79,7 @@ export const Navigation: React.FC = () => {
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 ) : null}
-                <span className="text-sm text-gray-600">{user?.name}</span>
+                <span className="text-sm text-gray-600">{user?.name ? formatPoduriName(user.name) : ''}</span>
               </div>
               <button
                 onClick={logout}
@@ -154,7 +155,7 @@ export const Navigation: React.FC = () => {
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 ) : null}
-                <div className="text-sm text-gray-600">Logged in as {user?.name}</div>
+                <div className="text-sm text-gray-600">Logged in as {user?.name ? formatPoduriName(user.name) : ''}</div>
               </div>
               <Link
                 to="/profile"

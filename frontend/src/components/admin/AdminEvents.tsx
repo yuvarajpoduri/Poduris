@@ -5,6 +5,7 @@ import { eventsAPI } from '../../utils/api';
 import type { Event } from '../../types';
 import { format } from 'date-fns';
 import { useToast } from '../../context/ToastContext';
+import { formatPoduriName } from '../../utils/formatUtils';
 
 export const AdminEvents: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -146,7 +147,7 @@ export const AdminEvents: React.FC = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-lg font-semibold text-black dark:text-white">{event.title}</h3>
+                  <h3 className="text-lg font-semibold text-black dark:text-white">{formatPoduriName(event.title)}</h3>
                   <span className={`text-xs px-2 py-1 rounded font-medium ${
                       event.eventType === 'holiday' ? 'bg-green-100 text-green-800' :
                       event.eventType === 'event' ? 'bg-blue-100 text-blue-800' :

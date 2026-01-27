@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
+import { formatPoduriName } from "../utils/formatUtils";
 
 export const Chat: React.FC = () => {
   const { user } = useAuth();
@@ -120,7 +121,7 @@ export const Chat: React.FC = () => {
   };
 
   // Helper to get display name
-  const getDisplayName = (sender: any) => sender?.nickname || sender?.name || "Unknown";
+  const getDisplayName = (sender: any) => sender?.nickname || (sender?.name ? formatPoduriName(sender.name) : "Unknown");
 
   return (
     <>
@@ -362,7 +363,7 @@ export const Chat: React.FC = () => {
                                 </div>
                            )}
                         </div>
-                        <h4 className="text-2xl font-black text-center text-gray-900 dark:text-white">{selectedMember.name}</h4>
+                        <h4 className="text-2xl font-black text-center text-gray-900 dark:text-white">{selectedMember.name ? formatPoduriName(selectedMember.name) : ""}</h4>
                         {selectedMember.nickname && <p className="text-indigo-500 font-bold mb-4">"{selectedMember.nickname}"</p>}
                         
                         <div className="w-full space-y-3 mt-4">

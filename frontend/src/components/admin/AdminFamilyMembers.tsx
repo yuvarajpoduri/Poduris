@@ -6,6 +6,7 @@ import { familyMembersAPI } from '../../utils/api';
 import type { FamilyMember } from '../../types';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { formatPoduriName } from '../../utils/formatUtils';
 
 export const AdminFamilyMembers: React.FC = () => {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -27,6 +28,8 @@ export const AdminFamilyMembers: React.FC = () => {
     occupation: '',
     location: '',
     bio: '',
+    storyEn: '',
+    storyTe: '',
     email: '',
     anniversaryDate: null
   });
@@ -80,6 +83,8 @@ export const AdminFamilyMembers: React.FC = () => {
         occupation: '',
         location: '',
         bio: '',
+        storyEn: '',
+        storyTe: '',
         email: '',
         anniversaryDate: null
       });
@@ -105,6 +110,8 @@ export const AdminFamilyMembers: React.FC = () => {
       occupation: member.occupation,
       location: member.location,
       bio: member.bio,
+      storyEn: member.storyEn || '',
+      storyTe: member.storyTe || '',
       email: (member as any).email || '',
       anniversaryDate: (member as any).anniversaryDate || null
     });
@@ -160,6 +167,8 @@ export const AdminFamilyMembers: React.FC = () => {
               occupation: '',
               location: '',
               bio: '',
+              storyEn: '',
+              storyTe: '',
               email: '',
               anniversaryDate: null
             });
@@ -208,10 +217,18 @@ export const AdminFamilyMembers: React.FC = () => {
           <Card key={member._id}>
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-black dark:text-white mb-2 truncate">{member.name}</h3>
+                <h3 className="text-lg font-bold text-black dark:text-white mb-2 truncate">{formatPoduriName(member.name)}</h3>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-600 dark:text-gray-400">ID: {member.id}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Generation: {member.generation}</p>
+                  <div className="flex gap-2 mt-3">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${member.storyEn ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`}>
+                      EN Story {member.storyEn ? '✓' : '×'}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${member.storyTe ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`}>
+                      TE Story {member.storyTe ? '✓' : '×'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col space-y-2 flex-shrink-0">
@@ -338,7 +355,7 @@ export const AdminFamilyMembers: React.FC = () => {
               {formData.parentId ? (
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
                   <span className="text-sm text-black dark:text-white">
-                    {members.find(m => m.id === formData.parentId)?.name || `ID: ${formData.parentId}`}
+                    {members.find(m => m.id === formData.parentId)?.name ? formatPoduriName(members.find(m => m.id === formData.parentId)!.name) : `ID: ${formData.parentId}`}
                   </span>
                   <button
                     type="button"
@@ -361,7 +378,7 @@ export const AdminFamilyMembers: React.FC = () => {
               {formData.spouseId ? (
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
                   <span className="text-sm text-black dark:text-white">
-                    {members.find(m => m.id === formData.spouseId)?.name || `ID: ${formData.spouseId}`}
+                    {members.find(m => m.id === formData.spouseId)?.name ? formatPoduriName(members.find(m => m.id === formData.spouseId)!.name) : `ID: ${formData.spouseId}`}
                   </span>
                   <button
                     type="button"
@@ -412,12 +429,24 @@ export const AdminFamilyMembers: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-black dark:text-white mb-1">Bio</label>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">Family Story (English)</label>
             <textarea
-              value={formData.bio || ''}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              value={formData.storyEn || ''}
+              onChange={(e) => setFormData({ ...formData, storyEn: e.target.value })}
               rows={4}
               className="input"
+              placeholder="Detailed family story in English..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">Family Story (Telugu)</label>
+            <textarea
+              value={formData.storyTe || ''}
+              onChange={(e) => setFormData({ ...formData, storyTe: e.target.value })}
+              rows={4}
+              className="input text-lg"
+              placeholder="కుటుంబ కథ తెలుగులో..."
             />
           </div>
 

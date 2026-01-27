@@ -7,6 +7,9 @@ import type { FamilyMember, FamilyMemberWithRelations } from '../types';
 import { format } from 'date-fns';
 import { Users, GitBranch, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatPoduriName } from '../utils/formatUtils';
+import { FamilyStory } from '../components/FamilyStory';
+import { Play } from 'lucide-react';
 
 export const FamilyView: React.FC = () => {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -17,6 +20,7 @@ export const FamilyView: React.FC = () => {
   const [selectedGeneration, setSelectedGeneration] = useState<number | null>(null);
   const [generations, setGenerations] = useState<number[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isStoryOpen, setIsStoryOpen] = useState(false);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -103,10 +107,21 @@ export const FamilyView: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="space-y-6"
       >
-        <div>
-          <h1 className="mb-2">Family Tree</h1>
-          <p className="text-gray-600 dark:text-gray-400">Explore your family across generations</p>
-        </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="mb-2">Family Tree</h1>
+              <p className="text-gray-600 dark:text-gray-400">Explore your family across generations</p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsStoryOpen(true)}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
+            >
+              <Play className="w-5 h-5 fill-white" />
+              <span>Watch Family Story</span>
+            </motion.button>
+          </div>
 
         {generations.length > 0 && (
           <motion.div
@@ -230,7 +245,7 @@ export const FamilyView: React.FC = () => {
                     
                     <div className="text-center space-y-1">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {member.name}
+                            {formatPoduriName(member.name)}
                         </h3>
                         {/* Nickname Removed */}
                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-1 h-4">
@@ -412,6 +427,10 @@ export const FamilyView: React.FC = () => {
             </Modal>
           )}
         </AnimatePresence>
+        <FamilyStory 
+          isOpen={isStoryOpen} 
+          onClose={() => setIsStoryOpen(false)} 
+        />
       </motion.div>
     </Layout>
   );

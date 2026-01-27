@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../components/Card";
 import { Modal } from "../components/Modal";
+import { formatPoduriName } from "../utils/formatUtils";
 
 const calculateAgeDisplay = (birthDate: string, eventDate: string) => {
   const birth = new Date(birthDate);
@@ -290,7 +291,7 @@ export const Calendar: React.FC = () => {
                                  ${!['birthday', 'anniversary'].includes(event.type) ? 'bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300' : ''}
                                `}
                              >
-                                {event.title || event.memberName?.split(' ')[0]}
+                                {event.title ? formatPoduriName(event.title) : (event.memberName ? formatPoduriName(event.memberName).split(' ')[0] : '')}
                              </div>
                            ))}
                            {dayEvents.length > 1 && (
@@ -338,7 +339,7 @@ export const Calendar: React.FC = () => {
                           
                           <div className="min-w-0 flex-1">
                              <h4 className="font-bold text-gray-900 dark:text-white truncate text-base">
-                                {event.title || event.memberName}
+                                {formatPoduriName(event.title || event.memberName || '')}
                              </h4>
                              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                                 {event.type}
@@ -420,7 +421,7 @@ export const Calendar: React.FC = () => {
                                   
                                   <div className="flex-1 min-w-0 mr-3">
                                      <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg truncate">
-                                       {event.title || event.memberName}
+                                       {formatPoduriName(event.title || event.memberName || '')}
                                      </h3>
                                      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                                        <span className={`w-1.5 h-1.5 rounded-full ${
@@ -491,7 +492,7 @@ export const Calendar: React.FC = () => {
                    </div>
                    
                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
-                      {previewMember.title || previewMember.memberName}
+                      {formatPoduriName(previewMember.title || previewMember.memberName || '')}
                    </h2>
                    <p className="text-gray-500 font-medium uppercase tracking-wider text-xs mb-6">
                       {previewMember.type} Celebration

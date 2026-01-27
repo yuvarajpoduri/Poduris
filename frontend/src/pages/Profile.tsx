@@ -18,7 +18,9 @@ export const Profile: React.FC = () => {
     occupation: "",
     birthDate: "",
     anniversaryDate: "" as string | null,
-    gender: "male" as "male" | "female" | "other"
+    gender: "male" as "male" | "female" | "other",
+    storyEn: "",
+    storyTe: ""
   });
 
   const [saving, setSaving] = useState(false);
@@ -36,7 +38,9 @@ export const Profile: React.FC = () => {
         occupation: user.occupation || "",
         birthDate: user.birthDate || "",
         anniversaryDate: user.anniversaryDate || null,
-        gender: user.gender || "male"
+        gender: user.gender || "male",
+        storyEn: user.storyEn || "",
+        storyTe: user.storyTe || ""
       });
     }
   }, [user]);
@@ -199,8 +203,24 @@ export const Profile: React.FC = () => {
           </div>
 
           <div className="space-y-3 pt-2">
-            <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Bio & About</label>
-            <textarea rows={4} placeholder="Share a little about yourself..." value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="input w-full bg-gray-50 dark:bg-gray-900/50 resize-none" />
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Short Bio</label>
+            <textarea rows={2} placeholder="A short catchphrase or bio..." value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="input w-full bg-gray-50 dark:bg-gray-900/50 resize-none" />
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <h4 className="text-lg font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider text-xs border-b border-gray-100 dark:border-gray-700 pb-2">
+                Detailed Family Story
+            </h4>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Family Story (English)</label>
+                <textarea rows={6} placeholder="Your detailed story in English for the family slideshow..." value={formData.storyEn} onChange={e => setFormData({...formData, storyEn: e.target.value})} className="input w-full bg-gray-50 dark:bg-gray-900/50 resize-none font-medium leading-relaxed" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">కుటుంబ కథ (Telugu)</label>
+                <textarea rows={6} placeholder="తెలుగులో మీ కుటుంబ కథ రాయండి..." value={formData.storyTe} onChange={e => setFormData({...formData, storyTe: e.target.value})} className="input w-full bg-gray-50 dark:bg-gray-900/50 resize-none text-lg font-medium leading-relaxed" />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end pt-6 border-t border-gray-100 dark:border-gray-700">

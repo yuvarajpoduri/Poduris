@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatPoduriName } from "../utils/formatUtils";
 
 export const Gallery: React.FC = () => {
   const { user } = useAuth();
@@ -477,7 +478,7 @@ export const Gallery: React.FC = () => {
                                 {image.uploadedBy?.avatar ? (
                                   <img src={image.uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
                                 ) : (
-                                  image.uploadedBy?.name?.charAt(0)
+                                   formatPoduriName(image.uploadedBy?.name || '').charAt(0)
                                 )}
                              </div>
                           </div>
@@ -568,11 +569,11 @@ export const Gallery: React.FC = () => {
                          <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
                                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xl shadow-blue-500/20">
-                                  {selectedImage.uploadedBy?.avatar ? <img src={selectedImage.uploadedBy.avatar} className="w-full h-full rounded-2xl object-cover" /> : selectedImage.uploadedBy?.name?.charAt(0)}
+                                   {selectedImage.uploadedBy?.avatar ? <img src={selectedImage.uploadedBy.avatar} className="w-full h-full rounded-2xl object-cover" /> : formatPoduriName(selectedImage.uploadedBy?.name || '').charAt(0)}
                                </div>
                                <div>
                                   <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-0.5">Source</p>
-                                  <p className="text-lg font-black tracking-tight">{selectedImage.uploadedBy?.name || 'Unknown User'}</p>
+                                   <p className="text-lg font-black tracking-tight">{selectedImage.uploadedBy?.name ? formatPoduriName(selectedImage.uploadedBy.name) : 'Unknown User'}</p>
                                </div>
                             </div>
                             <button 

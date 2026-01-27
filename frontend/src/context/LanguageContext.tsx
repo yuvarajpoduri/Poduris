@@ -105,6 +105,12 @@ const translations: Record<Language, Record<string, string>> = {
     // Family
     'family.title': 'Our Legacy',
     'family.noMembers': 'No kin found.',
+    'family.storyTitle': 'Family Story',
+    'family.watchStory': 'Watch Family Story',
+    'family.generation': 'Generation',
+    'family.gatheringLineage': 'Gathering the lineage...',
+    'family.noStories': 'No stories found.',
+    'family.defaultBio': 'A valued member of our family tree, contributing to our collective legacy.',
 
     // Chat
     'chat.title': 'The Hearth',
@@ -233,6 +239,12 @@ const translations: Record<Language, Record<string, string>> = {
     // Family
     'family.title': 'మన వంశవృక్షం',
     'family.noMembers': 'సభ్యులు కనపడలేదు.',
+    'family.storyTitle': 'కుటుంబ కథ',
+    'family.watchStory': 'కుటుంబ కథ చూడండి',
+    'family.generation': 'తరం',
+    'family.gatheringLineage': 'వంశాన్ని సిద్ధం చేస్తున్నాము...',
+    'family.noStories': 'కథలు ఏమీ లేవు.',
+    'family.defaultBio': 'మన వంశ వృక్షంలో ఒక ముఖ్యమైన సభ్యుడు, మన వారసత్వానికి దోహదపడుతున్నారు.',
 
     // Chat
     'chat.title': 'కబుర్లు',

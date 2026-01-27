@@ -15,6 +15,7 @@ import {
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import { formatPoduriName } from "../utils/formatUtils";
 
 // --- Helper Components for the new Moody Look ---
 
@@ -150,8 +151,8 @@ export const Dashboard: React.FC = () => {
 
   // Combine and sort events
   const allUpcoming = [
-      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: b.name })),
-      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${a.member1} & ${a.member2}`, avatar: undefined as string | undefined }))
+      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: formatPoduriName(b.name) })),
+      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${formatPoduriName(a.member1)} & ${formatPoduriName(a.member2)}`, avatar: undefined as string | undefined }))
   ].filter(e => e.daysUntil >= 0)
    .sort((a, b) => a.daysUntil - b.daysUntil)
    .slice(0, 5); // Just show top 5
@@ -186,7 +187,7 @@ export const Dashboard: React.FC = () => {
                      >
                         {greeting}, <br/>
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200">
-                            {user?.name?.split(' ')[0] || 'Friend'}
+                            {user?.name ? formatPoduriName(user.name).split(' ')[0] : 'Friend'}
                         </span>.
                      </motion.h1>
                      

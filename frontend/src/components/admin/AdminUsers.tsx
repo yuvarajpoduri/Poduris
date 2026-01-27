@@ -3,6 +3,7 @@ import { Card } from "../Card";
 import { Modal } from "../Modal";
 import { usersAPI } from "../../utils/api";
 import type { User } from "../../types";
+import { formatPoduriName } from "../../utils/formatUtils";
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -299,7 +300,7 @@ export const AdminUsers: React.FC = () => {
             <div className="space-y-3 text-black">
               <div>
                 <p>
-                  <strong>Name:</strong> {selectedUser.name}
+                  <strong>Name:</strong> {formatPoduriName(selectedUser.name)}
                 </p>
                 <p>
                   <strong>Email:</strong> {selectedUser.email}
@@ -317,11 +318,11 @@ export const AdminUsers: React.FC = () => {
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-lg font-semibold text-blue-600">
-                        {selectedUser.linkedFamilyMember.name.charAt(0).toUpperCase()}
+                        {formatPoduriName(selectedUser.linkedFamilyMember.name).charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <p className="font-medium">{selectedUser.linkedFamilyMember.name}</p>
+                      <p className="font-medium">{formatPoduriName(selectedUser.linkedFamilyMember.name)}</p>
                       <p className="text-sm text-gray-600">Generation {selectedUser.linkedFamilyMember.generation}</p>
                     </div>
                   </div>

@@ -9,6 +9,8 @@ export interface User {
   bio?: string;
   location?: string;
   occupation?: string;
+  storyEn?: string;
+  storyTe?: string;
   familyMemberId?: number;
   linkedFamilyMemberId?: number;
   linkedFamilyMember?: FamilyMember;
@@ -37,6 +39,8 @@ export interface FamilyMember {
   occupation: string;
   location: string;
   bio: string;
+  storyEn?: string;
+  storyTe?: string;
   createdAt?: string;
   updatedAt?: string;
 }

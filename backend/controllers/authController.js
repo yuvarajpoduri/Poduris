@@ -61,6 +61,15 @@ export const login = async (req, res, next) => {
           role: "member",
           avatar: familyMember.avatar || "",
           familyMemberId: familyMember.id,
+          bio: familyMember.bio || "",
+          location: familyMember.location || "",
+          occupation: familyMember.occupation || "",
+          birthDate: familyMember.birthDate,
+          anniversaryDate: familyMember.anniversaryDate || null,
+          gender: familyMember.gender,
+          generation: familyMember.generation,
+          storyEn: familyMember.storyEn || "",
+          storyTe: familyMember.storyTe || "",
         },
       });
       return;
@@ -86,6 +95,15 @@ export const login = async (req, res, next) => {
         role: "member",
         avatar: familyMember.avatar || "",
         familyMemberId: familyMember.id,
+        bio: familyMember.bio || "",
+        location: familyMember.location || "",
+        occupation: familyMember.occupation || "",
+        birthDate: familyMember.birthDate,
+        anniversaryDate: familyMember.anniversaryDate || null,
+        gender: familyMember.gender,
+        generation: familyMember.generation,
+        storyEn: familyMember.storyEn || "",
+        storyTe: familyMember.storyTe || "",
       },
     });
   } catch (error) {
@@ -146,6 +164,8 @@ export const getMe = async (req, res, next) => {
         anniversaryDate: familyMember.anniversaryDate || null,
         gender: familyMember.gender,
         generation: familyMember.generation,
+        storyEn: familyMember.storyEn || "",
+        storyTe: familyMember.storyTe || "",
       },
     });
   } catch (error) {

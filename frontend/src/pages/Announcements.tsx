@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { announcementsAPI } from '../utils/api';
 import type { Announcement } from '../types';
 import { format } from 'date-fns';
+import { formatPoduriName } from '../utils/formatUtils';
 
 export const Announcements: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -84,7 +85,7 @@ export const Announcements: React.FC = () => {
                       </div>
                       <p className="text-gray-700 mb-4 whitespace-pre-wrap leading-relaxed">{announcement.content}</p>
                       <div className="flex items-center justify-between text-sm text-gray-600 pt-3 border-t border-gray-200">
-                        <span>By <span className="font-medium text-black">{announcement.createdBy.name}</span></span>
+                        <span>By <span className="font-medium text-black">{formatPoduriName(announcement.createdBy.name)}</span></span>
                         <span>{format(new Date(announcement.createdAt), 'MMM dd, yyyy')}</span>
                       </div>
                     </div>

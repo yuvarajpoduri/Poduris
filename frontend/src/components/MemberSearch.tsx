@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { familyMembersAPI } from '../utils/api';
 import type { FamilyMember } from '../types';
+import { formatPoduriName } from '../utils/formatUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MemberSearchProps {
@@ -116,7 +117,7 @@ export const MemberSearch: React.FC<MemberSearchProps> = ({
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-3"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-black dark:text-white">{member.name}</p>
+                      <p className="font-medium text-black dark:text-white">{formatPoduriName(member.name)}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         ID: {member.id} • Gen {member.generation}
                       </p>

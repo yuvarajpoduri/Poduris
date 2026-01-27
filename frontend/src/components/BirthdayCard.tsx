@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Cake, Sparkles, Send, Check } from 'lucide-react';
 import { Confetti } from './Confetti';
 import { wishAPI } from '../utils/api';
+import { formatPoduriName } from '../utils/formatUtils';
 
 interface BirthdayCardProps {
   memberName: string;
@@ -49,7 +50,7 @@ const MyBirthdayView: React.FC<{ memberName: string; avatar?: string }> = ({ mem
                             <img src={avatar} alt={memberName} className="w-full h-full object-cover" />
                         ) : (
                             <div className="text-3xl font-bold text-orange-400 dark:text-orange-200">
-                                {memberName.charAt(0).toUpperCase()}
+                                {formatPoduriName(memberName).charAt(0).toUpperCase()}
                             </div>
                         )}
                     </div>
@@ -70,7 +71,7 @@ const MyBirthdayView: React.FC<{ memberName: string; avatar?: string }> = ({ mem
                     Today is Special
                 </h3>
                 <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight leading-tight mb-4">
-                    Happy Birthday, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-600 dark:from-orange-300 dark:to-amber-200">{memberName}</span>
+                    Happy Birthday, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-600 dark:from-orange-300 dark:to-amber-200">{formatPoduriName(memberName)}</span>
                 </h2>
                 <p className="text-base md:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed font-light">
                     Here’s to another year of growth, joy, and achievements. Enjoy your day!
@@ -143,7 +144,7 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
                     <img src={avatar} alt={memberName} className="w-full h-full object-cover" />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 text-xl md:text-2xl font-bold text-gray-500 dark:text-gray-300">
-                        {memberName.charAt(0).toUpperCase()}
+                        {formatPoduriName(memberName).charAt(0).toUpperCase()}
                     </div>
                 )}
              </div>
@@ -154,7 +155,7 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
            <div className="flex flex-col items-start text-left">
              <div className="flex items-center gap-2">
                 <h3 className="text-base md:text-xl font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {memberName}
+                  {formatPoduriName(memberName)}
                 </h3>
                 <Sparkles className="w-4 h-4 text-yellow-500 hidden sm:block" />
              </div>
