@@ -3,9 +3,9 @@ import { useAuth } from "../context/AuthContext";
 import { socket } from "../utils/socket";
 import Peer from "simple-peer";
 import { 
-  Video, VideoOff, Mic, MicOff, Phone, 
+  Mic, MicOff, Phone, 
   Users, Plus, 
-  Pin, PinOff, Monitor, Settings, ArrowRight
+  ArrowRight, Activity
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPoduriName } from "../utils/formatUtils";
@@ -48,10 +48,9 @@ export const VideoCall: React.FC = () => {
   const [userStream, setUserStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [pinnedUserId, setPinnedUserId] = useState<string | null>(null);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [activeRooms, setActiveRooms] = useState<{ name: string, count: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
 
   const socketIdRef = useRef<string>();
   const peersRef = useRef<PeerState[]>([]);
@@ -123,106 +122,83 @@ export const VideoCall: React.FC = () => {
     }
   };
 
-  const startCall = async (retryCount = 0) => {
+  const startCall = async () => {
     if (!roomName.trim()) return;
     setError(null);
 
     try {
-      console.log(`Starting call (attempt ${retryCount + 1})...`);
-      
-      // 1. Aggressively clean up any existing streams/tracks
+      console.log("Starting voice call...");
       stopStream();
       
-      // 2. Small delay to allow hardware to release (crucial for mobile/WebView)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // 3. Optional: Enumerate devices to "wake up" the hardware layer
-      if (navigator.mediaDevices?.enumerateDevices) {
-        await navigator.mediaDevices.enumerateDevices();
-      }
-
-      const constraints = {
-        video: {
-          facingMode: "user",
-          // Use very safe defaults for mobile
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { max: 30 }
-        },
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
-          noiseSuppression: true
-        }
-      };
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log("Media stream obtained successfully");
-        
-        streamRef.current = stream;
-        setUserStream(stream);
-        
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-          // Forced play for WebView
-          const playPromise = userVideoRef.current.play();
-          if (playPromise !== undefined) {
-             playPromise.catch(() => {
-                console.log("Auto-play prevented, waiting for user interaction");
-             });
-          }
-        }
+      console.log("Microphone access obtained");
+      streamRef.current = stream;
+      setUserStream(stream);
+      
+      setInCall(true);
+      socket.emit("join-room", {
+        roomName,
+        userName: user?.nickname || user?.name,
+        userAvatar: user?.avatar
+      });
 
-        setInCall(true);
-        socket.emit("join-room", {
-          roomName,
-          userName: user?.nickname || user?.name,
-          userAvatar: user?.avatar
-        });
-
-      } catch (err: any) {
-        // If "Already in use" and we haven't retried yet, try one more time
-        if ((err.name === 'NotReadableError' || err.name === 'TrackStartError') && retryCount < 1) {
-          console.log("Hardware busy, retrying in 1.5 seconds...");
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          return startCall(retryCount + 1);
-        }
-
-        // If it's still failing after retry, try AUDIO ONLY as a final fallback
-        if (retryCount >= 1 && constraints.video) {
-          console.log("Video failed twice, falling back to audio-only...");
-          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          streamRef.current = audioStream;
-          setUserStream(audioStream);
-          setIsVideoOff(true);
-          setInCall(true);
-          socket.emit("join-room", {
-            roomName,
-            userName: user?.nickname || user?.name,
-            userAvatar: user?.avatar
-          });
-          return;
-        }
-
-        throw err; // Re-throw to be caught by outer catch
-      }
+      // Simple voice activity detection for local user
+      setupVoiceActivityDetector(stream, 'local');
 
     } catch (err: any) {
-      console.error("Final media access error:", err);
-      let errorMsg = "Connection failed. Please check permissions.";
-      
+      console.error("Microphone access error:", err);
+      let errorMsg = "Could not access microphone.";
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMsg = "Permission denied. Allow Camera/Mic in Settings > Apps > Poduris.";
-      } else if (err.name === 'NotFoundError') {
-        errorMsg = "No camera/mic found.";
-      } else {
-        // Instead of showing "Already in use", we show a friendlier recovery message
-        errorMsg = "Hardware is taking longer than expected. Please close other camera apps and try again.";
+        errorMsg = "Microphone permission denied. Please allow access in settings.";
       }
-      
       setError(errorMsg);
       setInCall(false);
-      stopStream();
+    }
+  };
+
+  const setupVoiceActivityDetector = (stream: MediaStream, id: string) => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkVoice = () => {
+        if (!stream.active) {
+          audioContext.close();
+          return;
+        }
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((p, c) => p + c, 0) / bufferLength;
+        
+        if (average > 30) { // Voice threshold
+          setActiveSpeakers(prev => new Set(prev).add(id));
+        } else {
+          setActiveSpeakers(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }
+        requestAnimationFrame(checkVoice);
+      };
+      checkVoice();
+    } catch (e) {
+      console.error("Voice detection failed", e);
     }
   };
 
@@ -284,7 +260,6 @@ export const VideoCall: React.FC = () => {
       const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
       peersRef.current = filteredPeers;
       setPeers(filteredPeers);
-      if (pinnedUserId === id) setPinnedUserId(null);
     };
 
     socket.on("all-users", handleAllUsers);
@@ -298,7 +273,7 @@ export const VideoCall: React.FC = () => {
       socket.off("receiving-returned-signal", handleReturnedSignal);
       socket.off("user-left", handleUserLeft);
     };
-  }, [inCall, userStream, pinnedUserId]);
+  }, [inCall, userStream]);
 
   const createPeer = (userToSignal: string, stream: MediaStream) => {
     const peer = new Peer({
@@ -324,6 +299,7 @@ export const VideoCall: React.FC = () => {
 
     peer.on("stream", stream => {
       updatePeerStream(userToSignal, stream);
+      setupVoiceActivityDetector(stream, userToSignal);
     });
 
     peer.on("error", err => {
@@ -363,6 +339,7 @@ export const VideoCall: React.FC = () => {
 
     peer.on("stream", stream => {
       updatePeerStream(callerId, stream);
+      setupVoiceActivityDetector(stream, callerId);
     });
 
     peer.on("error", err => {
@@ -409,8 +386,6 @@ export const VideoCall: React.FC = () => {
     stopStream();
     
     setInCall(false);
-    setPinnedUserId(null);
-    setIsScreenSharing(false);
     setError(null);
   };
 
@@ -423,128 +398,81 @@ export const VideoCall: React.FC = () => {
     }
   };
 
-  const toggleVideo = () => {
-    if (userStream) {
-      userStream.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsVideoOff(!isVideoOff);
-    }
-  };
 
-  const toggleScreenShare = async () => {
-    if (!isScreenSharing) {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ cursor: true } as any);
-        const videoTrack = screenStream.getVideoTracks()[0];
-        
-        peersRef.current.forEach(p => {
-          if (userStream) {
-            p.peer.replaceTrack(
-              userStream.getVideoTracks()[0],
-              videoTrack,
-              userStream
-            );
-          }
-        });
 
-        videoTrack.onended = () => {
-          stopScreenShare();
-        };
-
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = screenStream;
-        }
-        setIsScreenSharing(true);
-      } catch (err) {
-        console.error("Error sharing screen:", err);
-      }
-    } else {
-      stopScreenShare();
-    }
-  };
-
-  const stopScreenShare = () => {
-    if (streamRef.current && userVideoRef.current) {
-      userVideoRef.current.srcObject = streamRef.current;
-      setIsScreenSharing(false);
-    }
-  };
-
-  const VideoTile = ({ stream, name, avatar, isLocal, id, index }: { stream?: MediaStream, name: string, avatar?: string, isLocal?: boolean, id: string, index: number }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
+  const VoiceTile = ({ stream, name, avatar, isLocal, id, index }: { stream?: MediaStream, name: string, avatar?: string, isLocal?: boolean, id: string, index: number }) => {
+    const audioRef = useRef<HTMLAudioElement>(null);
     const borderColor = USER_COLORS[index % USER_COLORS.length];
     const bgColor = BG_COLORS[index % BG_COLORS.length];
+    const isSpeaking = activeSpeakers.has(id);
 
     useEffect(() => {
-      if (videoRef.current && stream) {
-        videoRef.current.srcObject = stream;
+      if (audioRef.current && stream && !isLocal) {
+        audioRef.current.srcObject = stream;
       }
-    }, [stream]);
-
-    const isPinned = pinnedUserId === id;
+    }, [stream, isLocal]);
 
     return (
       <motion.div 
         layout
-        className={`relative rounded-3xl overflow-hidden bg-gray-900 border-2 ${borderColor} shadow-2xl transition-all duration-500 group ${
-          isPinned ? 'ring-4 ring-accent-blue ring-offset-4 ring-offset-gray-950' : ''
+        className={`relative aspect-square rounded-[40px] overflow-hidden bg-gray-900 border-2 ${borderColor} shadow-2xl flex items-center justify-center group transition-all duration-300 ${
+          isSpeaking ? 'scale-105 ring-4 ring-accent-blue/50' : ''
         }`}
       >
-        {stream && (stream.getVideoTracks().length > 0) ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isLocal}
-            className={`w-full h-full object-cover ${isLocal && !isScreenSharing ? 'scale-x-[-1]' : ''}`}
-          />
-        ) : (
-          <div className={`w-full h-full flex flex-col items-center justify-center ${bgColor}`}>
-            <AnimatePresence>
-               <motion.div 
-                 initial={{ scale: 0.8, opacity: 0 }}
-                 animate={{ scale: 1, opacity: 1 }}
-                 className="relative"
-               >
-                  {avatar ? (
-                    <img src={avatar} alt={name} className="w-24 h-24 rounded-full object-cover border-4 border-white/10 shadow-2xl" />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
-                      {name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {(!stream || stream.getAudioTracks().length > 0) && (
-                    <div className="absolute -bottom-2 -right-2 bg-accent-blue p-2 rounded-full border-2 border-gray-900 shadow-xl">
-                       <Mic className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-               </motion.div>
-            </AnimatePresence>
-            <p className="mt-4 text-white/50 font-medium text-sm uppercase tracking-widest">{isLocal ? "You" : name}</p>
-          </div>
-        )}
+        {!isLocal && <audio ref={audioRef} autoPlay playsInline />}
+        
+        <div className={`w-full h-full flex flex-col items-center justify-center ${bgColor} relative`}>
+            {/* Pulsing Voice Animation */}
+            {isSpeaking && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <motion.div 
+                  initial={{ scale: 1, opacity: 0.5 }}
+                  animate={{ scale: 1.5, opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                  className="w-32 h-32 rounded-full bg-accent-blue/20"
+                />
+                <motion.div 
+                  initial={{ scale: 1, opacity: 0.8 }}
+                  animate={{ scale: 1.8, opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 2, delay: 0.5 }}
+                  className="w-32 h-32 rounded-full bg-accent-blue/10"
+                />
+              </div>
+            )}
 
-        {/* Overlay Info */}
-        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-none">
-          <div className="px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${isLocal ? 'bg-green-500' : 'bg-accent-blue'}`}></div>
-            <span className="text-white text-xs font-bold">{isLocal ? "Me" : formatPoduriName(name)}</span>
-          </div>
-          
-          <div className="flex space-x-2 pointer-events-auto">
-             {!isLocal && (
-               <button 
-                 onClick={() => setPinnedUserId(isPinned ? null : id)}
-                 className={`p-2 rounded-full backdrop-blur-md border border-white/10 transition-all ${
-                   isPinned ? 'bg-accent-blue text-white' : 'bg-black/40 text-white/70 hover:bg-white hover:text-black'
-                 }`}
-                 title={isPinned ? "Unpin user" : "Pin user"}
-               >
-                 {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-               </button>
-             )}
-          </div>
+            <motion.div 
+              animate={isSpeaking ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 0.5 }}
+              className="relative z-10"
+            >
+              {avatar ? (
+                <img src={avatar} alt={name} className="w-24 h-24 rounded-full object-cover border-4 border-white/10 shadow-2xl" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {isSpeaking && (
+                <div className="absolute -bottom-2 -right-2 bg-green-500 p-2 rounded-full border-2 border-gray-900 shadow-xl">
+                   <Activity className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </motion.div>
+            <p className="mt-4 text-white/50 font-bold text-xs uppercase tracking-widest relative z-10">
+              {isLocal ? "Me" : formatPoduriName(name)}
+            </p>
+            {isSpeaking && (
+               <div className="mt-2 flex space-x-1 relative z-10">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ height: [4, 12, 4] }}
+                      transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }}
+                      className="w-1 bg-accent-blue rounded-full"
+                    />
+                  ))}
+               </div>
+            )}
         </div>
       </motion.div>
     );
@@ -563,17 +491,22 @@ export const VideoCall: React.FC = () => {
             exit={{ opacity: 0, scale: 1.05 }}
             className="flex-1 flex flex-col items-center justify-center p-8 space-y-12"
           >
-            <div className="text-center space-y-4">
-               <div className="w-24 h-24 bg-gradient-to-tr from-accent-blue to-purple-600 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-accent-blue/20 rotate-12">
-                 <Video className="w-12 h-12 text-white -rotate-12" />
-               </div>
-               <h2 className="text-4xl font-black tracking-tight text-white drop-shadow-sm">
-                 Family <span className="text-accent-blue italic">Studio</span>
-               </h2>
-               <p className="text-white/40 max-w-md mx-auto font-medium">
-                 Connect with up to 8 family members in high-quality video. Secure, private, and smooth.
-               </p>
-            </div>
+             <div className="text-center space-y-4">
+                <div className="w-32 h-32 bg-gradient-to-tr from-accent-blue to-purple-600 rounded-[40px] mx-auto flex items-center justify-center shadow-2xl shadow-accent-blue/20 rotate-12 relative">
+                  <Mic className="w-16 h-16 text-white -rotate-12 z-10" />
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute inset-0 bg-white rounded-[40px]"
+                  />
+                </div>
+                <h2 className="text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                  Family <span className="text-accent-blue italic">Voice</span>
+                </h2>
+                <p className="text-white/40 max-w-md mx-auto font-medium">
+                  Crystal clear private audio calls for the poduri family. No camera, no pressure.
+                </p>
+             </div>
 
             <div className="w-full max-w-md space-y-6">
                <div className="relative group">
@@ -625,13 +558,12 @@ export const VideoCall: React.FC = () => {
                      <p className="text-red-400 text-center font-bold text-sm">
                        {error}
                      </p>
-                     {error.includes("camera/microphone") && (
-                       <div className="mt-3 text-[10px] text-red-400/60 font-medium leading-relaxed">
-                         <p>• Ensure your browser has permission.</p>
-                         <p>• For APK: Go to Phone Settings → Apps → Poduris → Permissions → Enable Camera & Microphone.</p>
-                         <p>• Make sure no other app is using the camera.</p>
-                       </div>
-                     )}
+                      {error.includes("microphone") && (
+                        <div className="mt-3 text-[10px] text-red-400/60 font-medium leading-relaxed">
+                          <p>• Ensure your browser has microphone permission.</p>
+                          <p>• For APK: Go to Phone Settings → Apps → Poduris → Permissions → Enable Microphone.</p>
+                        </div>
+                      )}
                    </div>
                  </motion.div>
                )}
@@ -646,13 +578,6 @@ export const VideoCall: React.FC = () => {
                </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl opacity-40">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="aspect-video bg-white/5 rounded-2xl border border-white/10 flex items-center justify-center italic text-xs font-bold text-white/20 uppercase tracking-tighter">
-                    Ready {i+1}
-                  </div>
-                ))}
-            </div>
           </motion.div>
         ) : (
           <motion.div 
@@ -673,116 +598,77 @@ export const VideoCall: React.FC = () => {
                </div>
                
                <div className="flex items-center space-x-4">
-                  <button className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all">
-                     <Settings className="w-5 h-5 text-white/60" />
-                  </button>
+                  <div className="px-4 py-2 bg-white/5 rounded-2xl border border-white/10 flex items-center space-x-2">
+                     <Activity className="w-4 h-4 text-accent-blue" />
+                     <span className="text-xs font-bold text-white/60">Voice Mode Active</span>
+                  </div>
                   <button 
                     onClick={endCall}
                     className="flex items-center space-x-2 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-2xl font-bold transition-all shadow-lg shadow-red-500/30"
                   >
                     <Phone className="w-4 h-4 rotate-[135deg]" />
-                    <span>Leave</span>
+                    <span>Hang Up</span>
                   </button>
                </div>
             </div>
 
-            {/* Video Grid */}
-            <div className={`flex-1 grid gap-6 ${
-              pinnedUserId 
-                ? 'grid-cols-4 grid-rows-4' 
-                : peers.length === 0 
-                  ? 'place-items-center' 
-                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-            }`}>
+             <div className="flex-1 grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-6xl mx-auto w-full content-center">
+              <VoiceTile
+                id="local"
+                index={0}
+                isLocal
+                name={user.nickname || user.name}
+                avatar={user.avatar}
+                stream={userStream!}
+              />
               
-              {/* Pinned View */}
-              {pinnedUserId && (
-                <div className="col-span-4 row-span-3">
-                   {pinnedUserId === 'local' ? (
-                      <VideoTile
-                        id="local"
-                        index={0}
-                        isLocal
-                        name={user.nickname || user.name}
-                        avatar={user.avatar}
-                        stream={userStream!}
-                      />
-                   ) : (
-                      <VideoTile
-                        id={pinnedUserId}
-                        index={peers.findIndex(p => p.peerID === pinnedUserId) + 1}
-                        name={peers.find(p => p.peerID === pinnedUserId)?.name || ""}
-                        avatar={peers.find(p => p.peerID === pinnedUserId)?.avatar}
-                        stream={peers.find(p => p.peerID === pinnedUserId)?.stream}
-                      />
-                   )}
-                </div>
-              )}
-
-              {/* Normal Grid */}
               <AnimatePresence>
-                {(!pinnedUserId || pinnedUserId !== 'local') && (
-                  <VideoTile
-                    id="local"
-                    index={0}
-                    isLocal
-                    name={user.nickname || user.name}
-                    avatar={user.avatar}
-                    stream={userStream!}
-                  />
-                )}
-                
                 {peers.map((peer, index) => (
-                  (pinnedUserId !== peer.peerID) && (
-                    <VideoTile
-                      key={peer.peerID}
-                      id={peer.peerID}
-                      index={index + 1}
-                      name={peer.name}
-                      avatar={peer.avatar}
-                      stream={peer.stream}
-                    />
-                  )
+                  <VoiceTile
+                    key={peer.peerID}
+                    id={peer.peerID}
+                    index={index + 1}
+                    name={peer.name}
+                    avatar={peer.avatar}
+                    stream={peer.stream}
+                  />
                 ))}
               </AnimatePresence>
             </div>
 
-            {/* Floating Controls */}
             <motion.div 
                initial={{ y: 50, opacity: 0 }}
                animate={{ y: 0, opacity: 1 }}
-               className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center p-2 bg-black/60 backdrop-blur-2xl rounded-[32px] border border-white/10 shadow-3xl space-x-2"
+               className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center p-3 bg-black/60 backdrop-blur-2xl rounded-[32px] border border-white/10 shadow-3xl space-x-4"
             >
                <button
                  onClick={toggleMute}
-                 className={`p-4 rounded-3xl transition-all ${isMuted ? 'bg-red-500 text-white' : 'hover:bg-white/10 text-white'}`}
+                 className={`p-5 rounded-3xl transition-all ${isMuted ? 'bg-red-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white'}`}
                >
-                 {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                 {isMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
                </button>
-               <button
-                 onClick={toggleVideo}
-                 className={`p-4 rounded-3xl transition-all ${isVideoOff ? 'bg-red-500 text-white' : 'hover:bg-white/10 text-white'}`}
-               >
-                 {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
-               </button>
-               <div className="w-px h-10 bg-white/10 mx-2"></div>
-               <button
-                 onClick={toggleScreenShare}
-                 className={`p-4 rounded-3xl transition-all ${isScreenSharing ? 'bg-accent-blue text-white' : 'hover:bg-white/10 text-white'}`}
-               >
-                 <Monitor className="w-6 h-6" />
-               </button>
-               <button
-                 onClick={() => setPinnedUserId(pinnedUserId === 'local' ? null : 'local')}
-                 className={`p-4 rounded-3xl transition-all ${pinnedUserId === 'local' ? 'bg-accent-blue text-white' : 'hover:bg-white/10 text-white'}`}
-               >
-                 <Pin className="w-6 h-6" />
-               </button>
+               
+               <div className="flex flex-col items-center px-4">
+                  <div className="flex space-x-1 mb-1">
+                     {[...Array(5)].map((_, i) => (
+                        <motion.div
+                           key={i}
+                           animate={!isMuted ? { height: [4, 16, 4] } : { height: 2 }}
+                           transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.1 }}
+                           className={`w-1.5 ${isMuted ? 'bg-white/20' : 'bg-accent-blue'} rounded-full`}
+                        />
+                     ))}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-tighter text-white/40">
+                    {isMuted ? 'Muted' : 'Speaking'}
+                  </span>
+               </div>
+
                <button
                  onClick={endCall}
-                 className="p-4 bg-red-500 text-white rounded-3xl hover:bg-red-600 transition-all shadow-xl shadow-red-500/20"
+                 className="p-5 bg-red-500 text-white rounded-3xl hover:bg-red-600 transition-all shadow-xl shadow-red-500/20"
                >
-                 <Phone className="w-6 h-6 rotate-[135deg]" />
+                 <Phone className="w-7 h-7 rotate-[135deg]" />
                </button>
             </motion.div>
           </motion.div>
