@@ -22,8 +22,15 @@ const AppRoutes: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900">
-        <div className="text-black dark:text-white">Loading...</div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white dark:bg-black transition-colors duration-300">
+        <div className="relative">
+             <div className="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+             <img 
+                src="https://res.cloudinary.com/dv4rmttv6/image/upload/v1769574913/file_00000000dcb4622fbc4e813929a7b2d0_bdoms6.png" 
+                alt="Poduris" 
+                className="w-24 h-24 rounded-full shadow-2xl relative z-10 animate-[pulse_3s_ease-in-out_infinite]"
+             />
+        </div>
       </div>
     );
   }

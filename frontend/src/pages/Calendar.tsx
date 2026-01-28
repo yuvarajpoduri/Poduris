@@ -29,15 +29,133 @@ const calculateAgeDisplay = (birthDate: string, eventDate: string) => {
 
   // Basic age calculation based on years
   let age = event.getFullYear() - birth.getFullYear();
-  
-  // Check if birthday has occurred this year relative to the event date/today
-  // If the event is in the future relative to today, we say "Turns X".
-  // If the event is today, "Turning X".
-  // If the event is in the past, "Turned X" or just "Age: X".
-  
-  // Simplify: "Turning X" is generally safe for the context of a birthday event.
   return age;
 };
+
+const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+const EventCard = ({ event }: { event: CalendarEvent }) => {
+    // Determine the start date for age/years calculation
+    const startDate = event.type === 'anniversary' ? event.anniversaryDate : event.birthDate;
+    const years = startDate ? calculateAgeDisplay(startDate, event.date) : 0;
+    
+    return (
+        <div className="relative pt-8 pb-4 px-4 text-center mx-auto w-full max-w-md">
+             {/* Vibrant Background Gradient (Mobile Optimized) */}
+             <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-full h-48 opacity-10 blur-3xl rounded-full scale-125
+                ${event.type === 'birthday' ? 'bg-orange-500' : ''}
+                ${event.type === 'anniversary' ? 'bg-pink-500' : 'bg-blue-500'}
+             `}></div>
+             
+             <div className="relative mb-6">
+                {/* Clean Avatar Display */}
+                <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="inline-block p-1.5 bg-white dark:bg-gray-800 rounded-full shadow-2xl relative z-10"
+                >
+                  {event.avatar ? (
+                      <img 
+                          src={event.avatar} 
+                          alt="avatar" 
+                          className="w-32 h-32 sm:w-48 sm:h-48 rounded-full object-cover border-4 border-white dark:border-gray-700 shadow-sm"
+                      />
+                  ) : (
+                      <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full border-4 border-white dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex items-center justify-center shadow-sm">
+                         {event.type === 'birthday' ? <Cake className="w-12 h-12 sm:w-16 sm:h-16 text-orange-400 opacity-80"/> : 
+                          event.type === 'anniversary' ? <Heart className="w-12 h-12 sm:w-16 sm:h-16 text-pink-400 opacity-80"/> :
+                          <CalendarIcon className="w-12 h-12 sm:w-16 sm:h-16 text-blue-400 opacity-80"/>}
+                      </div>
+                  )}
+                </motion.div>
+             </div>
+             
+             <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="space-y-2"
+             >
+                 <h2 className="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">
+                    {formatPoduriName(event.title || event.memberName || '')}
+                 </h2>
+                 <div className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wide
+                    ${event.type === 'birthday' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' : ''}
+                    ${event.type === 'anniversary' ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300' : ''}
+                    ${!['birthday', 'anniversary'].includes(event.type) ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : ''}
+                 `}>
+                    {event.type} Celebration
+                 </div>
+             </motion.div>
+             
+             {event.description && (
+                 <p className="mt-4 text-gray-600 dark:text-gray-300 italic text-sm sm:text-base max-w-sm mx-auto leading-relaxed">
+                     "{event.description}"
+                 </p>
+             )}
+             
+             <div className="mt-8">
+                 {startDate ? (
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto items-stretch h-24 sm:h-28">
+                       {/* Box 1: Status / Prefix */}
+                       <div className="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-2xl border border-gray-100 dark:border-gray-700 w-full h-full flex items-center justify-center">
+                            <p className="text-xs sm:text-sm font-black text-gray-400 uppercase tracking-widest leading-relaxed">
+                              {event.type === 'anniversary' ? 'Together' : (new Date(event.date) < new Date() ? 'Turned' : 'Turns')}
+                            </p>
+                       </div>
+                       
+                       {/* Box 2: Age / Ordinal */}
+                       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-2 border-2 border-transparent relative z-20 w-full h-full flex items-center justify-center overflow-hidden">
+                           <div className={`absolute inset-0 rounded-2xl opacity-20
+                                ${event.type === 'birthday' ? 'bg-orange-500' : ''}
+                                ${event.type === 'anniversary' ? 'bg-pink-500' : 'bg-blue-500'}
+                           `}></div>
+                           <p className={`font-black text-transparent bg-clip-text bg-gradient-to-br flex items-center justify-center h-full w-full
+                                ${event.type === 'birthday' ? 'from-orange-500 to-red-500 text-4xl sm:text-5xl' : ''}
+                                ${event.type === 'anniversary' ? 'from-pink-500 to-purple-500 text-3xl sm:text-4xl' : 'from-blue-500 to-indigo-500 text-4xl sm:text-5xl'} 
+                           `}>
+                               {event.type === 'anniversary' ? getOrdinal(years) : years}
+                           </p>
+                       </div>
+                       
+                       {/* Box 3: Date / Suffix */}
+                       <div className="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-2xl border border-gray-100 dark:border-gray-700 w-full h-full flex flex-col items-center justify-center">
+                          {event.type === 'anniversary' ? (
+                              <p className="text-xs sm:text-sm font-black text-pink-500 dark:text-pink-400 uppercase tracking-widest">
+                                Anniv.
+                              </p>
+                          ) : (
+                              <>
+                                <p className="text-[10px] text-gray-400 uppercase font-black mb-1 tracking-wider">On</p>
+                                <p className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200">
+                                    {format(new Date(event.date), "MMM d")}
+                                </p>
+                              </>
+                          )}
+                       </div>
+                    </div>
+                 ) : (
+                    <div className="inline-flex items-center gap-4 bg-gray-50 dark:bg-gray-800/50 px-8 py-4 rounded-3xl border border-gray-100 dark:border-gray-700">
+                        <div className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                           <CalendarIcon className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Event Date</p>
+                          <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                            {format(new Date(event.date), "MMMM d, yyyy")}
+                          </p>
+                        </div>
+                    </div>
+                 )}
+             </div>
+        </div>
+    );
+};
+
 
 // Helper to dedup events based on memberId + type
 const getUniqueEvents = (events: CalendarEvent[]) => {
@@ -61,6 +179,12 @@ export const Calendar: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  // Reset slide index when date changes
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [selectedDate]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -379,67 +503,74 @@ export const Calendar: React.FC = () => {
                       </div>
                    </div>
                    
-                   <div className="p-6">
+                   <div className="p-0">
                       {selectedEvents.length === 0 ? (
                           <div className="py-12 text-center opacity-60">
                              <CalendarIcon className="w-16 h-16 mx-auto mb-4 text-gray-300 grayscale" />
                              <p className="text-gray-500 font-medium">No events for this day</p>
                           </div>
                       ) : (
-                          <div className="space-y-4">
-                             {/* Show ALL events here, no deduplication */}
-                             {selectedEvents.map((event, i) => (
-                               <motion.div 
-                                 initial={{ x: -20, opacity: 0 }}
-                                 animate={{ x: 0, opacity: 1 }}
-                                 transition={{ delay: i * 0.1 }}
-                                 key={i}
-                                 className="group flex items-center p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-gray-100 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 hover:shadow-md"
-                               >
-                                  <div className="shrink-0 mr-4">
-                                     {event.avatar ? (
-                                         <div className="w-12 h-12 rounded-full p-0.5 border-2 border-white dark:border-gray-600 shadow-sm">
-                                            <img 
-                                                src={event.avatar} 
-                                                alt={event.title} 
-                                                className="w-full h-full rounded-full object-cover"
-                                            />
-                                         </div>
-                                     ) : (
-                                         <div className={`
-                                            w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm ring-2 ring-white dark:ring-gray-600
-                                            ${event.type === 'birthday' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                                            ${event.type === 'anniversary' ? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' : ''}
-                                            ${!['birthday', 'anniversary'].includes(event.type) ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-                                         `}>
-                                            {event.type === "birthday" && <Cake className="w-5 h-5" />}
-                                            {event.type === "anniversary" && <Heart className="w-5 h-5" />}
-                                            {['event', 'holiday', 'other'].includes(event.type) && <CalendarIcon className="w-5 h-5" />}
-                                         </div>
-                                     )}
+                          <div className="relative overflow-hidden w-full">
+                             {/* Carousel Container */}
+                             <motion.div 
+                                className="flex"
+                                animate={{ x: `-${slideIndex * 100}%` }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                drag="x"
+                                dragConstraints={{ left: 0, right: 0 }}
+                                dragElastic={0.2}
+                                onDragEnd={(e, { offset, velocity }) => {
+                                  const swipe = offset.x;
+                                  if (swipe < -50 && slideIndex < selectedEvents.length - 1) {
+                                    setSlideIndex(prev => prev + 1);
+                                  } else if (swipe > 50 && slideIndex > 0) {
+                                    setSlideIndex(prev => prev - 1);
+                                  }
+                                }}
+                             >
+                                {selectedEvents.map((event, i) => (
+                                  <div key={i} className="min-w-full pb-8">
+                                     <EventCard event={event} />
                                   </div>
-                                  
-                                  <div className="flex-1 min-w-0 mr-3">
-                                     <h3 className="font-bold text-gray-900 dark:text-white text-base sm:text-lg truncate">
-                                       {formatPoduriName(event.title || event.memberName || '')}
-                                     </h3>
-                                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                                       <span className={`w-1.5 h-1.5 rounded-full ${
-                                            event.type === 'birthday' ? 'bg-orange-500' : 
-                                            event.type === 'anniversary' ? 'bg-pink-500' : 'bg-blue-500'
-                                       }`}></span>
-                                       {event.type}
-                                     </p>
-                                  </div>
+                                ))}
+                             </motion.div>
 
-                                  <button 
-                                    onClick={() => setPreviewMember(event)}
-                                    className="p-2.5 rounded-xl bg-white dark:bg-gray-800 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 shadow-sm transition-all group-hover:scale-105"
-                                  >
-                                    <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                                  </button>
-                               </motion.div>
-                             ))}
+                             {/* Dots Navigation */}
+                             {selectedEvents.length > 1 && (
+                               <div className="flex justify-center gap-2 pb-6">
+                                 {selectedEvents.map((_, i) => (
+                                   <button
+                                     key={i}
+                                     onClick={() => setSlideIndex(i)}
+                                     className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                       i === slideIndex 
+                                         ? 'bg-violet-600 w-6' 
+                                         : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400'
+                                     }`}
+                                   />
+                                 ))}
+                               </div>
+                             )}
+
+                             {/* Arrow Buttons (Desktop) */}
+                             {selectedEvents.length > 1 && (
+                               <>
+                                 <button 
+                                   onClick={() => setSlideIndex(prev => Math.max(0, prev - 1))}
+                                   disabled={slideIndex === 0}
+                                   className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 shadow-lg text-gray-800 dark:text-white disabled:opacity-0 transition-opacity hover:bg-white hidden sm:block"
+                                 >
+                                   <ChevronLeft className="w-6 h-6" />
+                                 </button>
+                                 <button 
+                                   onClick={() => setSlideIndex(prev => Math.min(selectedEvents.length - 1, prev + 1))}
+                                   disabled={slideIndex === selectedEvents.length - 1}
+                                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 shadow-lg text-gray-800 dark:text-white disabled:opacity-0 transition-opacity hover:bg-white hidden sm:block"
+                                 >
+                                   <ChevronRight className="w-6 h-6" />
+                                 </button>
+                               </>
+                             )}
                           </div>
                       )}
                    </div>
@@ -457,85 +588,7 @@ export const Calendar: React.FC = () => {
               title=""
               size="sm"
             >
-                <div className="relative pt-12 pb-8 px-6 text-center">
-                   {/* Background Splash */}
-                   <div className={`absolute top-0 left-0 right-0 h-24 opacity-20
-                      ${previewMember.type === 'birthday' ? 'bg-orange-500' : ''}
-                      ${previewMember.type === 'anniversary' ? 'bg-pink-500' : 'bg-blue-500'}
-                   `}></div>
-                   
-                   <div className="relative inline-block mb-4">
-                      <div className="p-1.5 bg-white dark:bg-gray-800 rounded-full shadow-xl">
-                        {previewMember.avatar ? (
-                            <img 
-                                src={previewMember.avatar} 
-                                alt="avatar" 
-                                className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-700" 
-                            />
-                        ) : (
-                            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-700 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                               {previewMember.type === 'birthday' ? <Cake className="w-12 h-12 text-orange-400"/> : 
-                                previewMember.type === 'anniversary' ? <Heart className="w-12 h-12 text-pink-400"/> :
-                                <CalendarIcon className="w-12 h-12 text-blue-400"/>}
-                            </div>
-                        )}
-                      </div>
-                      <div className={`
-                        absolute bottom-2 right-2 p-2.5 rounded-full text-white shadow-lg border-2 border-white dark:border-gray-800
-                        ${previewMember.type === 'birthday' ? 'bg-orange-500' : ''}
-                        ${previewMember.type === 'anniversary' ? 'bg-pink-500' : 'bg-blue-500'}
-                      `}>
-                         {previewMember.type === "birthday" && <Cake className="w-5 h-5" />}
-                         {previewMember.type === "anniversary" && <Heart className="w-5 h-5" />}
-                         {!['birthday', 'anniversary'].includes(previewMember.type) && <CalendarIcon className="w-5 h-5" />}
-                      </div>
-                   </div>
-                   
-                   <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">
-                      {formatPoduriName(previewMember.title || previewMember.memberName || '')}
-                   </h2>
-                   <p className="text-gray-500 font-medium uppercase tracking-wider text-xs mb-6">
-                      {previewMember.type} Celebration
-                   </p>
-                   
-                   {previewMember.description && (
-                       <p className="text-gray-600 dark:text-gray-300 italic mb-6">
-                           "{previewMember.description}"
-                       </p>
-                   )}
-                   
-                   {/* Only show 'Turned' if birthDate exists */}
-                   {previewMember.birthDate ? (
-                      <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-gray-700/50 px-6 py-3 rounded-2xl">
-                         <div className="text-right">
-                            {/* Check if birthday already happened this year relative to today to decide tense */}
-                            <p className="text-xs text-gray-500 uppercase font-bold">
-                                {new Date(previewMember.date) < new Date() ? 'Turned' : 'Turns'}
-                            </p>
-                            <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">
-                              {calculateAgeDisplay(previewMember.birthDate, previewMember.date)}
-                            </p>
-                         </div>
-                         <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
-                         <div className="text-left">
-                            <p className="text-xs text-gray-500 uppercase font-bold">Date</p>
-                            <p className="text-sm font-bold text-gray-900 dark:text-white">
-                              {format(new Date(previewMember.date), "MMM d")}
-                            </p>
-                         </div>
-                      </div>
-                   ) : (
-                       /* Generic Date Display for non-birthday events */
-                      <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-gray-700/50 px-8 py-3 rounded-2xl">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 uppercase font-bold">Date</p>
-                            <p className="text-xl font-bold text-gray-900 dark:text-white">
-                              {format(new Date(previewMember.date), "MMMM d, yyyy")}
-                            </p>
-                          </div>
-                      </div>
-                   )}
-                </div>
+                <EventCard event={previewMember} />
             </Modal>
           )}
         </AnimatePresence>

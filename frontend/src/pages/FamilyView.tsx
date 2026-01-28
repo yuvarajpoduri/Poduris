@@ -298,7 +298,7 @@ export const FamilyView: React.FC = () => {
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Age</p>
                                 <p className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <Crown className="w-4 h-4 text-emerald-500" />
-                                    {new Date().getFullYear() - new Date(selectedMember.birthDate).getFullYear()} Years
+                                    {Math.floor((new Date().getTime() - new Date(selectedMember.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} Years
                                 </p>
                             </div>
                          )}

@@ -8,7 +8,7 @@ export const LanguageToggle: React.FC = () => {
   return (
     <motion.button
       onClick={toggleLanguage}
-      className="tap-target p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-semibold text-lg"
+      className="tap-target p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors font-semibold text-lg"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label="Toggle language"
