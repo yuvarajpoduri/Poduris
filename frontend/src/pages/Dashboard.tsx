@@ -10,7 +10,7 @@ import {
   Calendar as CalendarIcon, 
   Image as ImageIcon,
   ArrowRight,
-  Sparkles
+
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
