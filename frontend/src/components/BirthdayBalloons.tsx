@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Balloon = ({ color, delay, left }: { color: string; delay: number; left: string }) => {

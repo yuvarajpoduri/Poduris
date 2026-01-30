@@ -17,7 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { formatPoduriName } from "../utils/formatUtils";
 import { BirthdayBalloons } from "../components/BirthdayBalloons";
-import { Sparkles } from "lucide-react";
+
 
 // --- Helper Components for the new Moody Look ---
 
