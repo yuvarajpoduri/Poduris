@@ -6,8 +6,10 @@ import {
   format,
   startOfMonth,
   endOfMonth,
+  startOfWeek,
   eachDayOfInterval,
   isToday,
+  endOfWeek,
 } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -216,9 +218,14 @@ export const Calendar: React.FC = () => {
     fetchEvents();
   }, [currentDate]);
 
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
   const days = eachDayOfInterval({
-    start: startOfMonth(currentDate),
-    end: endOfMonth(currentDate),
+    start: calendarStart,
+    end: calendarEnd,
   });
 
   const getEventsForDate = (date: Date) =>

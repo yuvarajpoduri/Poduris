@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Cake, Sparkles, Send, Check } from 'lucide-react';
+import { Cake, Sparkles, Send, Check, Crown } from 'lucide-react';
 import { Confetti } from './Confetti';
 import { wishAPI } from '../utils/api';
 import { formatPoduriName } from '../utils/formatUtils';
@@ -13,80 +13,80 @@ interface BirthdayCardProps {
 }
 
 /* =========================================================================
-   MY BIRTHDAY VIEW
-   ========================================================================= */
-/* =========================================================================
-   MY BIRTHDAY VIEW (Premium & Professional)
+   MY BIRTHDAY VIEW (Ultra Premium)
    ========================================================================= */
 const MyBirthdayView: React.FC<{ memberName: string; avatar?: string }> = ({ memberName, avatar }) => {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} // smooth ease-out
-      className="relative overflow-hidden rounded-2xl border border-white/50 dark:border-white/10 shadow-sm transition-colors duration-300"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="relative overflow-hidden rounded-[2.5rem] bg-black text-white shadow-2xl ring-1 ring-white/10"
     >
-        {/*
-            Background System:
-            Using refined gradients that feel warm in light mode and deep/sophisticated in dark mode.
-        */}
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 z-0" />
+        {/* Deep Animated Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/40 via-gray-900 to-black z-0" />
+        <motion.div 
+            animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3]
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-24 -right-24 w-96 h-96 bg-orange-600/20 rounded-full blur-[100px] pointer-events-none" 
+        />
         
-        {/* Ambient Glow Effects for "Special" feel */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[120%] bg-gradient-to-r from-orange-200/20 to-transparent dark:from-indigo-500/10 dark:to-transparent blur-3xl rounded-full mix-blend-multiply dark:mix-blend-layout" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[120%] bg-gradient-to-l from-yellow-200/20 to-transparent dark:from-purple-500/10 dark:to-transparent blur-3xl rounded-full mix-blend-multiply dark:mix-blend-layout" />
-
-        <div className="relative z-10 px-8 py-10 md:px-12 md:py-14 text-center">
-            {/* Avatar Section: Replaces Icon with User Image */}
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="relative inline-block mb-6"
-            >
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full p-[3px] bg-gradient-to-tr from-orange-300 via-amber-200 to-white shadow-lg mx-auto">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center relative border-2 border-white dark:border-slate-900">
+        <div className="relative z-10 px-8 py-12 md:py-16 flex flex-col items-center text-center">
+            {/* Crowned Avatar */}
+            <div className="relative mb-8">
+                <motion.div
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 z-20"
+                >
+                    <Crown className="w-12 h-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)] fill-yellow-400" />
+                </motion.div>
+                
+                <div className="w-28 h-28 md:w-36 md:h-36 rounded-3xl p-1 bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500 rotate-3 transition-transform hover:rotate-0 duration-500 shadow-2xl">
+                    <div className="w-full h-full rounded-[1.4rem] overflow-hidden bg-gray-900 border-2 border-white/10">
                         {avatar ? (
                             <img src={avatar} alt={memberName} className="w-full h-full object-cover" />
                         ) : (
-                            <div className="text-3xl font-bold text-orange-400 dark:text-orange-200">
-                                {formatPoduriName(memberName).charAt(0).toUpperCase()}
+                            <div className="w-full h-full flex items-center justify-center text-4xl font-black text-white/20">
+                                {formatPoduriName(memberName).charAt(0)}
                             </div>
                         )}
                     </div>
                 </div>
-                {/* Minimalist Floating Icon Badge */}
-                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 rounded-full p-2 shadow-md border border-gray-100 dark:border-gray-700">
-                    <Cake className="w-4 h-4 text-orange-500" strokeWidth={2} />
-                </div>
-            </motion.div>
+            </div>
 
-            {/* Typography Logic: Hierarchy & Balance */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
+                transition={{ delay: 0.2 }}
+                className="space-y-4 max-w-xl"
             >
-                <h3 className="text-sm uppercase tracking-widest text-gray-500 dark:text-gray-400 font-medium mb-3">
-                    Today is Special
-                </h3>
-                <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight leading-tight mb-4">
-                    Happy Birthday, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-600 dark:from-orange-300 dark:to-amber-200">{formatPoduriName(memberName)}</span>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400">
+                    <Sparkles className="w-3 h-3" />
+                    Today is Your Day
+                </div>
+                
+                <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                    Happy Birthday,<br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-orange-400 to-pink-500">
+                        {formatPoduriName(memberName)}
+                    </span>
                 </h2>
-                <p className="text-base md:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed font-light">
-                    Here’s to another year of growth, joy, and achievements. Enjoy your day!
+                
+                <p className="text-lg text-gray-400 font-medium leading-relaxed">
+                    Celebrating another brilliant chapter in your story. May your day be as remarkable as you are!
                 </p>
             </motion.div>
         </div>
-        
-        {/* Subtle Bottom Accent Line */}
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-orange-300/50 dark:via-indigo-400/30 to-transparent opacity-80" />
     </motion.div>
   );
 };
 
 /* =========================================================================
-   FRIEND BIRTHDAY VIEW
+   FRIEND BIRTHDAY VIEW (Sleek & Visual)
    ========================================================================= */
 const FriendBirthdayView: React.FC<BirthdayCardProps> = ({ 
   memberName, 
@@ -100,7 +100,7 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
     const checkWishStatus = async () => {
         if (!recipientId) return;
         try {
-            const sentIds = await wishAPI.getSentIds(); // Use API to check
+            const sentIds = await wishAPI.getSentIds();
             if (sentIds.includes(recipientId)) {
                 setHasWished(true);
             }
@@ -111,7 +111,9 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
     checkWishStatus();
   }, [recipientId]);
 
-  const handleWish = async () => {
+  const handleWish = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
       if (!recipientId || hasWished || loading) return;
       
       try {
@@ -120,7 +122,6 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
           setHasWished(true);
       } catch (error) {
           console.error("Failed to send wish", error);
-          alert("Failed to send wish. You might have already wished them!");
       } finally {
           setLoading(false);
       }
@@ -130,66 +131,68 @@ const FriendBirthdayView: React.FC<BirthdayCardProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5 }}
-      className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300"
+      className="group relative h-32 md:h-40 overflow-hidden rounded-[2rem] bg-white dark:bg-gray-900 shadow-xl border border-gray-100 dark:border-white/10 transition-all duration-500"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-pink-50/50 dark:from-blue-900/10 dark:to-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <Confetti count={40} size={5} colors={['#60A5FA', '#F472B6', '#34D399', '#FBBF24']} />
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 via-transparent to-pink-50/50 dark:from-orange-500/5 dark:to-pink-500/5" />
+      <Confetti count={20} size={4} colors={['#F59E0B', '#EC4899', '#8B5CF6']} />
 
-      <div className="relative z-10 p-4 md:p-5 flex flex-row items-center gap-4">
-        <div className="relative flex-shrink-0">
-          <div className="relative w-14 h-14 md:w-18 md:h-18 rounded-full p-[2px] bg-gradient-to-tr from-blue-400 via-pink-400 to-yellow-400 ">
-             <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center relative">
-                {avatar ? (
-                    <img src={avatar} alt={memberName} className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 text-xl md:text-2xl font-bold text-gray-500 dark:text-gray-300">
-                        {formatPoduriName(memberName).charAt(0).toUpperCase()}
+      <div className="relative z-10 h-full p-6 flex items-center justify-between gap-6">
+        <div className="flex items-center gap-6 flex-1 min-w-0">
+            {/* Avatar with Ring */}
+            <div className="relative shrink-0">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl p-1 bg-gradient-to-br from-yellow-400 via-orange-500 to-pink-500 shadow-lg group-hover:scale-105 transition-transform duration-500">
+                    <div className="w-full h-full rounded-[0.9rem] overflow-hidden bg-white dark:bg-gray-800">
+                        {avatar ? (
+                            <img src={avatar} alt={memberName} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl font-black text-gray-200 dark:text-gray-700">
+                                {formatPoduriName(memberName).charAt(0)}
+                            </div>
+                        )}
                     </div>
-                )}
-             </div>
-          </div>
-        </div>
+                </div>
+                <div className="absolute -top-2 -right-2 bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-lg border border-gray-100 dark:border-white/10">
+                    <Cake className="w-4 h-4 text-orange-500" strokeWidth={2.5} />
+                </div>
+            </div>
 
-        <div className="flex-1 min-w-0">
-           <div className="flex flex-col items-start text-left">
-             <div className="flex items-center gap-2">
-                <h3 className="text-base md:text-xl font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {formatPoduriName(memberName)}
+            <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 mb-1">Birthday Today</p>
+                <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white truncate tracking-tight">
+                    {formatPoduriName(memberName)}
                 </h3>
-                <Sparkles className="w-4 h-4 text-yellow-500 hidden sm:block" />
-             </div>
-             
-             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
-               It's their special day! 🎉
-             </p>
-           </div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                    Send your best wishes! ✨
+                </p>
+            </div>
         </div>
         
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
             <button 
                 onClick={handleWish}
                 disabled={hasWished || loading}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all flex items-center gap-1.5 md:gap-2
+                className={`relative overflow-hidden px-6 py-3 md:px-8 md:py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 transform active:scale-95 shadow-xl
                     ${hasWished 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-default'
-                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50'
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 cursor-default'
+                        : 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-orange-600/30'
                     }
                 `}
             >
-                {loading ? (
-                    <span className="animate-pulse">...</span>
-                ) : hasWished ? (
-                    <>
-                        <Check className="w-3 h-3 md:w-4 md:h-4" />
-                        <span className="hidden sm:inline">Wished</span>
-                    </>
-                ) : (
-                    <>
-                        <Send className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Wish</span>
-                    </>
-                )}
+                <span className="relative z-10 flex items-center gap-3">
+                    {loading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : hasWished ? (
+                        <>
+                            <Check className="w-5 h-5" />
+                            <span>Sent</span>
+                        </>
+                    ) : (
+                        <>
+                            <Send className="w-5 h-5" />
+                            <span>Wish</span>
+                        </>
+                    )}
+                </span>
             </button>
         </div>
       </div>

@@ -16,6 +16,8 @@ import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { formatPoduriName } from "../utils/formatUtils";
+import { BirthdayBalloons } from "../components/BirthdayBalloons";
+import { Sparkles } from "lucide-react";
 
 // --- Helper Components for the new Moody Look ---
 
@@ -116,6 +118,7 @@ export const Dashboard: React.FC = () => {
     upcomingAnniversaries: []
   });
   const [loading, setLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -136,6 +139,28 @@ export const Dashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  // Combine and sort events
+  const allUpcoming = [
+      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: formatPoduriName(b.name), avatar: (b as any).avatar })),
+      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${formatPoduriName(a.member1)} & ${formatPoduriName(a.member2)}`, avatar: undefined as string | undefined }))
+  ].filter(e => e.daysUntil >= 0)
+   .sort((a, b) => a.daysUntil - b.daysUntil)
+   .slice(0, 5); // Just show top 5
+
+  const birthdayPeople = allUpcoming.filter(e => e.type === 'birthday' && e.daysUntil === 0);
+
+  useEffect(() => {
+    if (birthdayPeople.length > 0) {
+      const today = new Date().toDateString();
+      const lastShown = localStorage.getItem('balloons_shown_date');
+      
+      if (lastShown !== today) {
+        setShowCelebration(true);
+        localStorage.setItem('balloons_shown_date', today);
+      }
+    }
+  }, [birthdayPeople.length]);
+
   if (loading) {
     return (
       <Layout>
@@ -149,17 +174,14 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  // Combine and sort events
-  const allUpcoming = [
-      ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: formatPoduriName(b.name) })),
-      ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${formatPoduriName(a.member1)} & ${formatPoduriName(a.member2)}`, avatar: undefined as string | undefined }))
-  ].filter(e => e.daysUntil >= 0)
-   .sort((a, b) => a.daysUntil - b.daysUntil)
-   .slice(0, 5); // Just show top 5
-
   return (
     <Layout>
+      <BirthdayBalloons active={showCelebration} />
+      
       <div className="space-y-8 pb-12">
+        
+
+
         
         {/* HERO SECTION - Premium Deep Dark Theme */}
         <div className="relative rounded-[2rem] overflow-hidden bg-black dark:bg-black text-white shadow-2xl ring-1 ring-white/10">
