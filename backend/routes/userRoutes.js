@@ -8,10 +8,12 @@ import {
   updateMyProfile,
   resetUserPassword
 } from '../controllers/userController.js';
+import { register } from '../controllers/authController.js';
 import { protect, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
 
+router.post('/register', register);
 router.get('/', protect, authorize('admin'), getAllUsers);
 router.put('/me/profile', protect, updateMyProfile);
 router.get('/:id', protect, authorize('admin'), getUser);

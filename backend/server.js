@@ -49,25 +49,30 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://poduris.onrender.com",
+  "https://bitemedaily.onrender.com",
   process.env.FRONTEND_URL,
-].filter(Boolean);
+].filter(Boolean).map(origin => origin.replace(/\/$/, ""));
 
 app.get("/healthz", (req, res) => res.status(200).send("OK"));
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow server-to-server & mobile webviews
+      // Allow browser-less requests (like mobile apps)
       if (!origin) return callback(null, true);
 
-      if (!allowedOrigins.includes(origin)) {
-        return callback(
-          new Error(`CORS blocked for origin: ${origin}`),
-          false
-        );
+      // Normalize incoming origin by removing trailing slash
+      const normalizedOrigin = origin.replace(/\/$/, "");
+
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        // Explicitly return the normalized origin to avoid trailing slash issues
+        return callback(null, normalizedOrigin);
       }
 
-      return callback(null, true);
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`),
+        false
+      );
     },
     credentials: true,
   })
@@ -110,6 +115,9 @@ app.use(trackActivity);
 ======================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+// Fallback for requests missing /api prefix (as seen in some deployment configs)
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 app.use("/api/family-members", familyMemberRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/notifications", notificationRoutes);

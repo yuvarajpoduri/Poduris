@@ -4,10 +4,11 @@ import { Modal } from '../components/Modal';
 import { familyMembersAPI } from '../utils/api';
 import type { FamilyMember, FamilyMemberWithRelations } from '../types';
 import { format } from 'date-fns';
-import { Users, Loader2, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin, Play, Search, Filter, BookOpen, Crown } from 'lucide-react';
+import { Users, FileText, UsersRound, Heart, Baby, Calendar as CalendarIcon, MapPin, Play, Search, Filter, BookOpen, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPoduriName } from '../utils/formatUtils';
 import { FamilyStory } from '../components/FamilyStory';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 export const FamilyView: React.FC = () => {
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -20,6 +21,7 @@ export const FamilyView: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -43,12 +45,33 @@ export const FamilyView: React.FC = () => {
   }, []);
 
   const handleMemberClick = async (memberId: number) => {
-    try {
-      const member = await familyMembersAPI.getById(memberId);
-      setSelectedMember(member);
+    // 1. Find the member in our current list for instant feedback
+    const basicMember = members.find(m => m.id === memberId);
+    
+    if (basicMember) {
+      // Set the basic data first so the modal opens instantly
+      setSelectedMember({
+        ...basicMember,
+        parents: [],
+        spouse: null,
+        children: []
+      } as FamilyMemberWithRelations);
       setIsModalOpen(true);
+    }
+
+    try {
+      // 2. Fetch full relations in background
+      setIsFetchingDetails(true);
+      const fullMember = await familyMembersAPI.getById(memberId);
+      setSelectedMember(fullMember);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load member details');
+      console.error('Failed to load full member details:', err);
+      // Fallback: if we didn't even have basic data (unlikely), show error
+      if (!basicMember) {
+        setError(err.response?.data?.message || 'Failed to load member details');
+      }
+    } finally {
+      setIsFetchingDetails(false);
     }
   };
 
@@ -65,15 +88,15 @@ export const FamilyView: React.FC = () => {
       return sortOrder === 'desc' ? dateA - dateB : dateB - dateA;
     });
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
-          <p className="text-gray-500 font-medium">Loading family...</p>
-        </div>
-      </Layout>
-    );
+  const [minLoading, setMinLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading || minLoading) {
+    return <LoadingScreen />;
   }
 
   if (error) {
@@ -370,56 +393,77 @@ export const FamilyView: React.FC = () => {
                             <h3 className="font-bold text-gray-900 dark:text-white">Family Connections</h3>
                          </div>
                          
-                         <div className="space-y-3">
-                            {/* Parents */}
-                            {selectedMember.parents.length > 0 && (
-                                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5">
-                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
-                                        <Users className="w-4 h-4 text-gray-400" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Parents</p>
-                                        <div className="flex flex-wrap gap-2 mt-0.5">
-                                            {selectedMember.parents.map(p => (
-                                                <span key={p._id} className="font-bold text-sm text-gray-800 dark:text-gray-200">{p.name}</span>
-                                            ))}
+                          <div className="space-y-3">
+                            {isFetchingDetails ? (
+                                <div className="space-y-3 animate-pulse">
+                                    <div className="h-14 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5" />
+                                    <div className="h-14 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5" />
+                                    <div className="h-14 bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5" />
+                                </div>
+                            ) : (
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="space-y-3"
+                                >
+                                    {/* Parents */}
+                                    {selectedMember.parents.length > 0 && (
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 shadow-sm transition-all hover:bg-gray-100/50 dark:hover:bg-white/10">
+                                            <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                                <Users className="w-4 h-4 text-indigo-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Parents</p>
+                                                <div className="flex flex-wrap gap-2 mt-0.5">
+                                                    {selectedMember.parents.map(p => (
+                                                        <span key={p._id || p.id} className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">{p.name}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
+                                    )}
 
-                            {/* Spouse */}
-                            {selectedMember.spouse && (
-                                <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-50/50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-900/20">
-                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
-                                        <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-pink-400 uppercase">Spouse</p>
-                                        <p className="font-bold text-sm text-pink-700 dark:text-pink-300">{selectedMember.spouse.name}</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Children */}
-                            {selectedMember.children.length > 0 && (
-                                 <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/20">
-                                    <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
-                                        <Baby className="w-4 h-4 text-indigo-500" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">Children</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedMember.children.map(c => (
-                                                <span key={c._id} className="px-2.5 py-1 bg-white dark:bg-gray-800 rounded-md text-xs font-bold text-indigo-900 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-900/30">
-                                                    {c.name}
-                                                </span>
-                                            ))}
+                                    {/* Spouse */}
+                                    {selectedMember.spouse && (
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-pink-50/30 dark:bg-pink-900/10 border border-pink-100/50 dark:border-pink-900/20 shadow-sm transition-all hover:bg-pink-100/20 dark:hover:bg-pink-900/20">
+                                            <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                                <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-black text-pink-400 uppercase tracking-tighter">Spouse</p>
+                                                <p className="font-bold text-sm text-pink-700 dark:text-pink-300 truncate">{selectedMember.spouse.name}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
+                                    )}
+
+                                    {/* Children */}
+                                    {selectedMember.children.length > 0 && (
+                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-900/20 shadow-sm transition-all hover:bg-indigo-100/20 dark:hover:bg-indigo-900/20">
+                                            <div className="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+                                                <Baby className="w-4 h-4 text-indigo-500" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter mb-1.5">Children</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedMember.children.map(c => (
+                                                        <span key={c._id || c.id} className="px-2.5 py-1 bg-white/80 dark:bg-gray-800/80 rounded-md text-[11px] font-black text-indigo-900 dark:text-indigo-200 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm">
+                                                            {c.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Empty Connections State */}
+                                    {!selectedMember.spouse && selectedMember.parents.length === 0 && selectedMember.children.length === 0 && (
+                                        <div className="text-center py-6 bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-white/10">
+                                            <p className="text-xs text-gray-400 font-medium">No connections recorded yet.</p>
+                                        </div>
+                                    )}
+                                </motion.div>
                             )}
-                         </div>
+                          </div>
                     </div>
                 </div>
               </div>

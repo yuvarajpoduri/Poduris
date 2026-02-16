@@ -183,7 +183,22 @@ export const updateMyProfile = async (req, res, next) => {
         .json({ success: false, message: "Not authorized" });
     }
     
-    const user = await User.findById(userId);
+    let user = await User.findById(userId);
+    
+    // If not found in User collection, check if it's a FamilyMember (for members)
+    if (!user) {
+      const member = await FamilyMember.findById(userId);
+      if (member) {
+        // Create a user-like object for compatibility
+        user = {
+          _id: member._id,
+          status: 'approved', // Members are considered approved if they can login
+          linkedFamilyMemberId: member.id,
+          role: 'family_member'
+        };
+      }
+    }
+
     if (!user) {
       return res
         .status(401)

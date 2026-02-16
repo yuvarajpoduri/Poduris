@@ -18,8 +18,8 @@ import {
   Cake,
   Heart,
   Eye,
-  Loader2,
 } from "lucide-react";
+import { LoadingScreen } from "../components/LoadingScreen";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../components/Card";
 import { Modal } from "../components/Modal";
@@ -252,14 +252,15 @@ export const Calendar: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({length: 10}, (_, i) => currentYear - 5 + i);
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-        </div>
-      </Layout>
-    );
+  const [minLoading, setMinLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if ((loading && events.length === 0) || minLoading) {
+    return <LoadingScreen />;
   }
 
   if (error) {
@@ -283,22 +284,24 @@ export const Calendar: React.FC = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
           
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-6">
-            <div>
-              <motion.h1 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="text-3xl sm:text-4xl font-black tracking-tight mb-2 drop-shadow-sm"
-              >
-                Calendar
-              </motion.h1>
-              <motion.p 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-indigo-100 text-sm sm:text-base font-medium max-w-lg"
-              >
-                Celebrating the moments that matter.
-              </motion.p>
+            <div className="flex items-center gap-4">
+              <div>
+                <motion.h1 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="text-3xl sm:text-4xl font-black tracking-tight mb-2 drop-shadow-sm"
+                >
+                  Calendar
+                </motion.h1>
+                <motion.p 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-indigo-100 text-sm sm:text-base font-medium max-w-lg"
+                >
+                  Celebrating the moments that matter.
+                </motion.p>
+              </div>
             </div>
             
             {/* Custom Month/Year Controls */}

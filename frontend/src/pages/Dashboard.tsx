@@ -6,17 +6,16 @@ import { format } from "date-fns";
 import { 
   Users, 
   GitBranch, 
-  Loader2, 
   Calendar as CalendarIcon, 
   Image as ImageIcon,
   ArrowRight,
-
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { formatPoduriName } from "../utils/formatUtils";
 import { BirthdayBalloons } from "../components/BirthdayBalloons";
+import { LoadingScreen } from "../components/LoadingScreen";
 
 
 // --- Helper Components for the new Moody Look ---
@@ -161,17 +160,15 @@ export const Dashboard: React.FC = () => {
     }
   }, [birthdayPeople.length]);
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-4">
-            <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-            <p className="text-indigo-900/50 dark:text-indigo-200/50 font-medium animate-pulse">
-                Preparing your personal hub...
-            </p>
-        </div>
-      </Layout>
-    );
+  const [minLoading, setMinLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading || minLoading) {
+    return <LoadingScreen />;
   }
 
   return (

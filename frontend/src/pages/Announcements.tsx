@@ -5,6 +5,7 @@ import { announcementsAPI } from '../utils/api';
 import type { Announcement } from '../types';
 import { format } from 'date-fns';
 import { formatPoduriName } from '../utils/formatUtils';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 export const Announcements: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -37,17 +38,15 @@ export const Announcements: React.FC = () => {
     return badges[category] || badges.other;
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-pulse-soft text-4xl mb-4">⏳</div>
-            <p className="text-gray-600">Loading announcements...</p>
-          </div>
-        </div>
-      </Layout>
-    );
+  const [minLoading, setMinLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading || minLoading) {
+    return <LoadingScreen />;
   }
 
   if (error) {

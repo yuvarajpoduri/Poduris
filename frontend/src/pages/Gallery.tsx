@@ -8,8 +8,9 @@ import type { GalleryImage } from "../types";
 import { format } from "date-fns";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Image as ImageIcon, UploadCloud, CheckCircle, Plus, Search, Trash2, Play, Pause, X, MapPin, ChevronDown, Share2, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { formatPoduriName } from "../utils/formatUtils";
+import { LoadingScreen } from "../components/LoadingScreen";
 
 export const Gallery: React.FC = () => {
   const { user } = useAuth();
@@ -40,19 +41,23 @@ export const Gallery: React.FC = () => {
   });
   
   // Slideshow State
-  const [isSlideshowActive, setIsSlideshowActive] = useState(false);
-  const [slideshowIndex, setSlideshowIndex] = useState(0);
   const [isSlideshowPaused, setIsSlideshowPaused] = useState(false);
+  const [isMasterSlideshow, setIsMasterSlideshow] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(true);
+  const [metadataTimeout, setMetadataTimeout] = useState<any>(null);
+  const [allImagesFallback, setAllImagesFallback] = useState<GalleryImage[]>([]);
 
   // Batch Detail Navigation
   const [currentBatchImageIndex, setCurrentBatchImageIndex] = useState(0);
+
+  const finalImages = images.length > 0 ? images : allImagesFallback;
 
   // Memoized Display Items (Grouped by Batch)
   const displayItems = React.useMemo(() => {
     const items: GalleryImage[] = [];
     const seenBatches = new Set<string>();
 
-    images.forEach(img => {
+    finalImages.forEach(img => {
       if (!img.batchId) {
         items.push(img);
       } else if (!seenBatches.has(img.batchId)) {
@@ -61,14 +66,14 @@ export const Gallery: React.FC = () => {
       }
     });
     return items;
-  }, [images]);
+  }, [finalImages]);
 
   // Find all images in the same batch as selectedImage
   const currentBatch = React.useMemo(() => {
     if (!selectedImage) return [];
     if (!selectedImage.batchId) return [selectedImage];
-    return images.filter(img => img.batchId === selectedImage.batchId);
-  }, [selectedImage, images]);
+    return finalImages.filter(img => img.batchId === selectedImage.batchId);
+  }, [selectedImage, finalImages]);
 
   // Sync index when selectedImage changes
   useEffect(() => {
@@ -77,6 +82,13 @@ export const Gallery: React.FC = () => {
       setCurrentBatchImageIndex(idx >= 0 ? idx : 0);
     }
   }, [selectedImage, currentBatch]);
+
+  const [minLoading, setMinLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const fetchImages = async () => {
     try {
@@ -98,6 +110,19 @@ export const Gallery: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Handle the "display all if empty" request in a separate state or effect
+  useEffect(() => {
+     const getFallback = async () => {
+        if (!loading && images.length === 0 && (selectedMonth !== 0 || selectedYear !== 0)) {
+           const data = await galleryAPI.getAll({ sort: sortBy });
+           setAllImagesFallback(data);
+        } else {
+           setAllImagesFallback([]);
+        }
+     };
+     getFallback();
+  }, [images, loading, selectedMonth, selectedYear, sortBy]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -127,8 +152,6 @@ export const Gallery: React.FC = () => {
       setUploadStep('details');
     }
   };
-
-
 
   const handleUpload = async () => {
     if (previews.length === 0) return;
@@ -199,26 +222,49 @@ export const Gallery: React.FC = () => {
     }
   };
 
-  // Slideshow Logic - Filtered to ONLY current month & year
-  const activeSlideshowImages = React.useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-    
-    return images.filter(img => {
-      const d = new Date(img.date || img.createdAt);
-      return (d.getMonth() + 1) === currentMonth && d.getFullYear() === currentYear;
-    });
-  }, [images]);
+  const [isSlideshowActive, setIsSlideshowActive] = useState(false);
+  const [slideshowIndex, setSlideshowIndex] = useState(0);
 
-  const startSlideshow = () => {
-    if (activeSlideshowImages.length === 0) {
-      showToast("No memories found for this month yet", "error");
+  // Slideshow Logic
+  const activeSlideshowImages = React.useMemo(() => {
+    if (isMasterSlideshow) return finalImages;
+    
+    const now = new Date();
+    
+    // Find images for a specific month/year
+    const filterByMonth = (m: number, y: number) => {
+      return finalImages.filter(img => {
+        const d = new Date(img.date || img.createdAt);
+        return (d.getMonth() + 1) === m && d.getFullYear() === y;
+      });
+    };
+
+    let currentMonth = now.getMonth() + 1;
+    let currentYear = now.getFullYear();
+    let monthImages = filterByMonth(currentMonth, currentYear);
+
+    // If empty, look backwards for up to 12 months to find the most recent memories
+    if (monthImages.length === 0) {
+      for (let i = 1; i <= 12; i++) {
+        const prevDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        monthImages = filterByMonth(prevDate.getMonth() + 1, prevDate.getFullYear());
+        if (monthImages.length > 0) break;
+      }
+    }
+
+    return monthImages.length > 0 ? monthImages : finalImages;
+  }, [finalImages, isMasterSlideshow]);
+
+  const startSlideshow = (master = false) => {
+    if (finalImages.length === 0) {
+      showToast("No memories found to display", "error");
       return;
     }
+    setIsMasterSlideshow(master);
     setIsSlideshowActive(true);
     setSlideshowIndex(0);
     setIsSlideshowPaused(false);
+    setShowMetadata(true);
   };
 
   useEffect(() => {
@@ -226,10 +272,32 @@ export const Gallery: React.FC = () => {
     if (isSlideshowActive && !isSlideshowPaused && activeSlideshowImages.length > 0) {
       interval = setInterval(() => {
         setSlideshowIndex((prev) => (prev + 1) % activeSlideshowImages.length);
-      }, 5000);
+      }, 7000); // 7 seconds per slide to allow 5s text visibility
     }
     return () => clearInterval(interval);
   }, [isSlideshowActive, isSlideshowPaused, activeSlideshowImages.length]);
+
+  // Handle auto-hiding metadata
+  useEffect(() => {
+    if (isSlideshowActive && !isSlideshowPaused) {
+      setShowMetadata(false); // Start hidden as per user request
+      if (metadataTimeout) clearTimeout(metadataTimeout);
+      const timeout = setTimeout(() => {
+        setShowMetadata(true); // Show AFTER 5 seconds
+      }, 5000); 
+      setMetadataTimeout(timeout);
+    }
+    return () => { if (metadataTimeout) clearTimeout(metadataTimeout); };
+  }, [slideshowIndex, isSlideshowActive, isSlideshowPaused]);
+
+  // Image Preloading for Slideshow
+  useEffect(() => {
+    if (isSlideshowActive && activeSlideshowImages.length > 0) {
+      const nextIdx = (slideshowIndex + 1) % activeSlideshowImages.length;
+      const img = new Image();
+      img.src = activeSlideshowImages[nextIdx].imageUrl;
+    }
+  }, [slideshowIndex, isSlideshowActive, activeSlideshowImages]);
 
   // Keyboard Support for Batch Navigation
   useEffect(() => {
@@ -251,15 +319,15 @@ export const Gallery: React.FC = () => {
 
   // Reset slideshow if images disappear or filter changes
   useEffect(() => {
-    if (isSlideshowActive && images.length === 0) {
+    if (isSlideshowActive && finalImages.length === 0) {
       setIsSlideshowActive(false);
-    } else if (isSlideshowActive && slideshowIndex >= images.length) {
+    } else if (isSlideshowActive && slideshowIndex >= activeSlideshowImages.length) {
       setSlideshowIndex(0);
     }
-  }, [images, isSlideshowActive, slideshowIndex]);
+  }, [finalImages, isSlideshowActive, slideshowIndex, activeSlideshowImages.length]);
 
-  const nextSlide = () => setSlideshowIndex((prev) => (prev + 1) % (images.length || 1));
-  const prevSlide = () => setSlideshowIndex((prev) => (prev - 1 + images.length) % (images.length || 1));
+  const nextSlide = () => setSlideshowIndex((prev) => (prev + 1) % (activeSlideshowImages.length || 1));
+  const prevSlide = () => setSlideshowIndex((prev) => (prev - 1 + activeSlideshowImages.length) % (activeSlideshowImages.length || 1));
 
   // Allow any authenticated user to upload
   const canUpload = !!user;
@@ -277,7 +345,6 @@ export const Gallery: React.FC = () => {
   // Touch Handlers for Swipe
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
 
   const minSwipeDistance = 50;
 
@@ -333,13 +400,21 @@ export const Gallery: React.FC = () => {
                 </p>
               </motion.div>
               
-              <div className="flex gap-3 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
                 <button
-                  onClick={startSlideshow}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2.5 px-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[1.25rem] font-black shadow-2xl hover:scale-[1.02] active:scale-95 transition-all text-sm uppercase tracking-widest"
+                  onClick={() => startSlideshow(true)}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-4 sm:px-6 py-3.5 bg-indigo-600 text-white rounded-[1.25rem] font-black shadow-2xl hover:scale-[1.02] active:scale-95 transition-all text-[10px] sm:text-xs uppercase tracking-widest whitespace-nowrap"
                 >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Slideshow</span>
+                  <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                  <span>Master Vault</span>
+                </button>
+                
+                <button
+                  onClick={() => startSlideshow(false)}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-4 sm:px-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[1.25rem] font-black shadow-2xl hover:scale-[1.02] active:scale-95 transition-all text-[10px] sm:text-xs uppercase tracking-widest whitespace-nowrap"
+                >
+                  <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                  <span>Flashbacks</span>
                 </button>
 
                 {canUpload && (
@@ -350,9 +425,9 @@ export const Gallery: React.FC = () => {
                         setPreviews([]);
                         setIsUploadModalOpen(true);
                     }}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2.5 px-6 py-3.5 bg-blue-600 text-white rounded-[1.25rem] font-black shadow-2xl shadow-blue-500/30 text-sm uppercase tracking-widest"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-4 sm:px-6 py-3.5 bg-blue-600 text-white rounded-[1.25rem] font-black shadow-2xl shadow-blue-500/30 text-[10px] sm:text-xs uppercase tracking-widest whitespace-nowrap"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>Upload</span>
                   </motion.button>
                 )}
@@ -427,13 +502,10 @@ export const Gallery: React.FC = () => {
         </div>
 
         {/* Dense Masonry Gallery Grid */}
-        {loading ? (
-           <div className="flex flex-col items-center justify-center h-80 gap-4">
-             <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-             <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em]">Synching Memories</p>
-           </div>
+        {(loading || minLoading) ? (
+           <LoadingScreen inline />
         ) : images.length > 0 ? (
-          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 space-y-2 pb-20">
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 space-y-2 pb-20">
             <AnimatePresence>
               {displayItems.map((image, index) => {
                 const batchCount = image.batchId ? images.filter(img => img.batchId === image.batchId).length : 1;
@@ -549,7 +621,7 @@ export const Gallery: React.FC = () => {
                         </>
                       )}
                   </div>
-                  <div className="w-full md:w-96 p-10 flex flex-col bg-white dark:bg-gray-950 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
+                  <div className="w-full md:w-96 p-6 sm:p-10 flex flex-col bg-white dark:bg-gray-950 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-800 overflow-y-auto">
                       <div className="mb-10">
                          <div className="bg-blue-500/10 text-blue-500 inline-block px-3 py-1 rounded-full font-black text-[10px] uppercase tracking-widest mb-4">
                            {format(new Date(selectedImage.date || selectedImage.createdAt), "MMMM d, yyyy")}
@@ -810,13 +882,33 @@ export const Gallery: React.FC = () => {
                  />
               </div>
 
-              {/* Close Button */}
-              <button 
-                onClick={() => setIsSlideshowActive(false)}
-                className="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl backdrop-blur-3xl z-[1400] transition-all transform hover:rotate-90 active:scale-95 border border-white/10 shadow-2xl"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              {/* Header Info Overlay */}
+              <AnimatePresence>
+                {showControls && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="absolute top-0 left-0 right-0 z-[1400] p-8 flex justify-between items-start pointer-events-none"
+                  >
+                    <div className="flex flex-col gap-2 pointer-events-auto">
+                        <div className="flex items-center gap-3">
+                           <button onClick={(e) => { e.stopPropagation(); setIsSlideshowActive(false); }} className="p-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl backdrop-blur-3xl transition-all border border-white/10 shadow-2xl pointer-events-auto">
+                              <X className="w-6 h-6" />
+                           </button>
+                           <div className="px-5 py-3.5 bg-white/10 backdrop-blur-3xl rounded-2xl border border-white/10 shadow-2xl">
+                              <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] leading-none mb-1.5">
+                                 {isMasterSlideshow ? 'Poduri Vault' : 'Flashbacks'}
+                              </p>
+                              <h3 className="text-white font-black text-xs sm:text-sm uppercase tracking-widest leading-none">
+                                 {isMasterSlideshow ? 'Showing All Memories' : "Showing This Month's Memories"}
+                              </h3>
+                           </div>
+                        </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Interaction Layer & Controls */}
               <div 
@@ -864,37 +956,50 @@ export const Gallery: React.FC = () => {
               </div>
 
               {/* Bottom Metadata */}
-              <div className="absolute bottom-16 left-12 right-12 z-[1300] pointer-events-none max-w-4xl mr-auto">
-                 <motion.div
-                    key={slideshowIndex + '-title'}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-                 >
-                    <h4 className="text-white font-heavy text-4xl md:text-7xl tracking-tighter drop-shadow-2xl mb-6 leading-tight">
-                        {activeSlideshowImages[slideshowIndex].title}
-                    </h4>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 px-1 pointer-events-none">
-                            <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-[10px] font-black text-white/80 overflow-hidden border border-white/10 backdrop-blur-md">
-                                {activeSlideshowImages[slideshowIndex].uploadedBy?.avatar ? (
-                                  <img src={activeSlideshowImages[slideshowIndex].uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
-                                ) : (
-                                  activeSlideshowImages[slideshowIndex].uploadedBy?.name?.charAt(0)
-                                )}
+              <div className="absolute bottom-16 left-6 right-6 md:left-12 md:right-12 z-[1300] pointer-events-none max-w-4xl mr-auto">
+                 <AnimatePresence>
+                   {showMetadata && (
+                     <motion.div
+                        key={slideshowIndex + '-title'}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+                     >
+                        <h4 className="text-white font-heavy text-4xl md:text-7xl tracking-tighter drop-shadow-2xl mb-4 md:mb-6 leading-tight">
+                            {activeSlideshowImages[slideshowIndex].title}
+                        </h4>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 px-1 pointer-events-none">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-[10px] font-black text-white/80 overflow-hidden border border-white/10 backdrop-blur-md">
+                                    {activeSlideshowImages[slideshowIndex].uploadedBy?.avatar ? (
+                                      <img src={activeSlideshowImages[slideshowIndex].uploadedBy.avatar} className="w-full h-full object-cover" alt="" />
+                                    ) : (
+                                      activeSlideshowImages[slideshowIndex].uploadedBy?.name?.charAt(0)
+                                    )}
+                                </div>
+                                <p className="text-white/60 font-black text-[10px] md:text-xs uppercase tracking-[0.3em] drop-shadow-md">
+                                    {activeSlideshowImages[slideshowIndex].uploadedBy?.name || 'Unknown Source'}
+                                </p>
                             </div>
-                            <p className="text-white/60 font-black text-xs uppercase tracking-[0.3em] drop-shadow-md">
-                                {activeSlideshowImages[slideshowIndex].uploadedBy?.name || 'Unknown Source'}
-                            </p>
+                            <div className="px-1">
+                                <p className="text-white/30 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] drop-shadow-md">
+                                    {format(new Date(activeSlideshowImages[slideshowIndex].date || activeSlideshowImages[slideshowIndex].createdAt), "MMMM yyyy")}
+                                </p>
+                            </div>
                         </div>
-                        <div className="px-1">
-                            <p className="text-white/30 text-xs font-black uppercase tracking-[0.3em] drop-shadow-md">
-                                {format(new Date(activeSlideshowImages[slideshowIndex].date || activeSlideshowImages[slideshowIndex].createdAt), "MMMM yyyy")}
-                            </p>
-                        </div>
-                    </div>
-                 </motion.div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
               </div>
+
+              {/* Eye Toggle For Text visibility */}
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowMetadata(!showMetadata); }}
+                className="absolute bottom-8 right-8 p-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl backdrop-blur-3xl z-[1400] transition-all transform hover:scale-110 active:scale-95 border border-white/10 shadow-2xl"
+              >
+                <Eye className={`w-6 h-6 transition-all ${showMetadata ? 'text-blue-400' : 'text-white/40'}`} />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

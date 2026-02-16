@@ -18,6 +18,7 @@ export const login = async (req, res, next) => {
       if (password === ADMIN_PASSWORD) {
         req.session.familyMemberId = "admin";
         req.session.role = "admin";
+        req.session.userId = "507f1f77bcf86cd799439011"; // Use mock admin ID for consistency
         res.status(200).json({
           success: true,
           user: {
@@ -52,6 +53,7 @@ export const login = async (req, res, next) => {
       
       req.session.familyMemberId = familyMember._id.toString();
       req.session.role = "member";
+      req.session.userId = familyMember._id.toString();
       res.status(200).json({
         success: true,
         user: {
@@ -86,6 +88,7 @@ export const login = async (req, res, next) => {
     // Set session
     req.session.familyMemberId = familyMember._id.toString();
     req.session.role = "member";
+    req.session.userId = familyMember._id.toString();
     res.status(200).json({
       success: true,
       user: {
@@ -105,6 +108,54 @@ export const login = async (req, res, next) => {
         storyEn: familyMember.storyEn || "",
         storyTe: familyMember.storyTe || "",
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const register = async (req, res, next) => {
+  try {
+    const { email, password, familyMemberId } = req.body;
+
+    if (!email || !password || !familyMemberId) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide email, password and family member selection",
+      });
+    }
+
+    // Find the family member by ID or email
+    const familyMember = await FamilyMember.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { id: familyMemberId }
+      ]
+    });
+
+    if (!familyMember) {
+      return res.status(404).json({
+        success: false,
+        message: "Family member not found. Please contact admin.",
+      });
+    }
+
+    // Check if account is already claimed
+    if (familyMember.password) {
+      return res.status(400).json({
+        success: false,
+        message: "This account has already been registered. Please login.",
+      });
+    }
+
+    // Set password and email
+    familyMember.password = password;
+    familyMember.email = email.toLowerCase();
+    await familyMember.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Registration successful! You can now login.",
     });
   } catch (error) {
     next(error);

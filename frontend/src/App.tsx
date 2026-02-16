@@ -16,23 +16,20 @@ import { Admin } from './pages/Admin';
 import { Chat } from './components/Chat';
 import { Profile } from './pages/Profile';
 import { VideoCall } from './pages/VideoCall';
+import { LoadingScreen } from './components/LoadingScreen';
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-white dark:bg-black transition-colors duration-300">
-        <div className="relative">
-             <div className="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-             <img 
-                src="https://res.cloudinary.com/dv4rmttv6/image/upload/v1769574913/file_00000000dcb4622fbc4e813929a7b2d0_bdoms6.png" 
-                alt="Poduris" 
-                className="w-24 h-24 rounded-full shadow-2xl relative z-10 animate-[pulse_3s_ease-in-out_infinite]"
-             />
-        </div>
-      </div>
-    );
+  const [minLoading, setMinLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setMinLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading || minLoading) {
+    return <LoadingScreen />;
   }
 
   return (

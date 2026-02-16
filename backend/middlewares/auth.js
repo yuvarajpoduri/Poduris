@@ -8,6 +8,7 @@ export const protect = async (req, res, next) => {
       if (member) {
         req.familyMember = member;
         req.user = member; // For backward compatibility
+        req.session.userId = member._id.toString(); // Ensure userId is set for userController
         return next();
       }
     } catch (error) {
