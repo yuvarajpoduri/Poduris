@@ -73,21 +73,49 @@ export const getStats = async (req, res, next) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const dailyActiveMembers = await FamilyMember.find({ 
-      sessionTimeToday: { $gt: 0 },
-      lastActive: { $gte: today }
-    }).select('name nickname avatar sessionTimeToday lastActive');
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
 
-    const dailyActiveAdmins = await User.find({ 
+    const currentYear = new Date();
+    currentYear.setMonth(0, 1);
+    currentYear.setHours(0, 0, 0, 0);
+    
+    // Family Members
+    const familyMembersUsage = await FamilyMember.find({
+      $or: [
+        { sessionTimeToday: { $gt: 0 } },
+        { sessionTimeMonthly: { $gt: 0 } },
+        { sessionTimeYearly: { $gt: 0 } }
+      ]
+    }).select('name nickname avatar sessionTimeToday sessionTimeMonthly sessionTimeYearly lastActive');
+
+    // Admins
+    const adminsUsage = await User.find({
       role: 'admin',
-      sessionTimeToday: { $gt: 0 },
-      lastActive: { $gte: today }
-    }).select('name email avatar sessionTimeToday lastActive');
+      $or: [
+        { sessionTimeToday: { $gt: 0 } },
+        { sessionTimeMonthly: { $gt: 0 } },
+        { sessionTimeYearly: { $gt: 0 } }
+      ]
+    }).select('name email avatar sessionTimeToday sessionTimeMonthly sessionTimeYearly lastActive');
 
-    const dailyUsage = [
-      ...dailyActiveAdmins.map(a => ({ ...a.toObject(), type: 'admin' })),
-      ...dailyActiveMembers.map(m => ({ ...m.toObject(), type: 'member' }))
-    ].sort((a, b) => b.sessionTimeToday - a.sessionTimeToday);
+    const allUsage = [
+      ...adminsUsage.map(a => ({ ...a.toObject(), type: 'admin' })),
+      ...familyMembersUsage.map(m => ({ ...m.toObject(), type: 'member' }))
+    ];
+
+    const dailyUsage = [...allUsage]
+      .filter(u => u.sessionTimeToday > 0 && new Date(u.lastActive) >= today)
+      .sort((a, b) => b.sessionTimeToday - a.sessionTimeToday);
+
+    const monthlyUsage = [...allUsage]
+      .filter(u => u.sessionTimeMonthly > 0 && new Date(u.lastActive) >= currentMonth)
+      .sort((a, b) => b.sessionTimeMonthly - a.sessionTimeMonthly);
+
+    const yearlyUsage = [...allUsage]
+      .filter(u => u.sessionTimeYearly > 0 && new Date(u.lastActive) >= currentYear)
+      .sort((a, b) => b.sessionTimeYearly - a.sessionTimeYearly);
 
     // Registered Users List (Members with passwords or Admin accounts)
     const registeredMembersList = await FamilyMember.find({ 
@@ -110,6 +138,8 @@ export const getStats = async (req, res, next) => {
         activeUsers: activeUsersList,
         registeredUsers,
         dailyUsage,
+        monthlyUsage,
+        yearlyUsage,
         topPages: topPages.map(p => ({ path: p._id, count: p.count })),
         roleStats,
         genderStats: genderStats.map(g => ({ name: g._id, value: g.count })),

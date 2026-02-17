@@ -113,6 +113,14 @@ const familyMemberSchema = new mongoose.Schema({
   sessionTimeToday: {
     type: Number,
     default: 0
+  },
+  sessionTimeMonthly: {
+    type: Number,
+    default: 0
+  },
+  sessionTimeYearly: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

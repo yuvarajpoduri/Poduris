@@ -20,24 +20,46 @@ export const trackActivity = async (req, res, next) => {
         if (member) {
           const lastActive = member.lastActive ? new Date(member.lastActive) : now;
           const lastActiveStr = lastActive.toISOString().split('T')[0];
+          const lastActiveMonth = lastActive.getMonth();
+          const lastActiveYear = lastActive.getFullYear();
           
-          let newSessionTime = member.sessionTimeToday || 0;
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+          
+          let newSessionTimeToday = member.sessionTimeToday || 0;
+          let newSessionTimeMonthly = member.sessionTimeMonthly || 0;
+          let newSessionTimeYearly = member.sessionTimeYearly || 0;
           
           // Reset if it's a new day
           if (todayStr !== lastActiveStr) {
-            newSessionTime = 0;
-          } else {
-            // Calculate diff since last activity
-            const diffMs = now - lastActive;
-            // Only add if last activity was within the last 15 minutes (to avoid adding huge gaps)
-            if (diffMs > 0 && diffMs < 15 * 60 * 1000) {
-              newSessionTime += Math.floor(diffMs / 1000); // add in seconds
-            }
+            newSessionTimeToday = 0;
+          }
+          
+          // Reset if it's a new month
+          if (currentMonth !== lastActiveMonth || currentYear !== lastActiveYear) {
+            newSessionTimeMonthly = 0;
+          }
+          
+          // Reset if it's a new year
+          if (currentYear !== lastActiveYear) {
+            newSessionTimeYearly = 0;
+          }
+
+          // Calculate diff since last activity
+          const diffMs = now - lastActive;
+          // Only add if last activity was within the last 15 minutes (to avoid adding huge gaps)
+          if (diffMs > 0 && diffMs < 15 * 60 * 1000) {
+            const addedSeconds = Math.floor(diffMs / 1000);
+            newSessionTimeToday += addedSeconds;
+            newSessionTimeMonthly += addedSeconds;
+            newSessionTimeYearly += addedSeconds;
           }
 
           member.lastActive = now;
           member.currentPath = path;
-          member.sessionTimeToday = newSessionTime;
+          member.sessionTimeToday = newSessionTimeToday;
+          member.sessionTimeMonthly = newSessionTimeMonthly;
+          member.sessionTimeYearly = newSessionTimeYearly;
           await member.save();
         }
         

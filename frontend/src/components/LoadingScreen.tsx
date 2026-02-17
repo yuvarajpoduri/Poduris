@@ -7,14 +7,14 @@ interface LoadingScreenProps {
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ inline }) => {
   return (
-    <div className={`${inline ? 'relative py-20 w-full' : 'fixed inset-0 z-[9999] bg-black'} flex flex-col items-center justify-center`}>
+    <div className={`${inline ? 'relative min-h-[60vh] w-full' : 'fixed inset-0 z-[9999] bg-white dark:bg-black'} flex flex-col items-center justify-center`}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         className="relative"
       >
-        <span className="font-['Great_Vibes'] text-6xl text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+        <span className="font-['Great_Vibes'] text-6xl text-gray-900 dark:text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
           Poduri's
         </span>
       </motion.div>
@@ -37,7 +37,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ inline }) => {
                 repeat: Infinity,
                 delay: i * 0.2
               }}
-              className="w-1.5 h-1.5 bg-white rounded-full"
+              className="w-1.5 h-1.5 bg-gray-900 dark:bg-white rounded-full"
             />
           ))}
         </div>

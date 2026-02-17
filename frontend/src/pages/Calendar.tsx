@@ -260,7 +260,11 @@ export const Calendar: React.FC = () => {
   }, []);
 
   if ((loading && events.length === 0) || minLoading) {
-    return <LoadingScreen />;
+    return (
+      <Layout>
+        <LoadingScreen inline />
+      </Layout>
+    );
   }
 
   if (error) {

@@ -30,12 +30,14 @@ interface RegisteredUser {
   type: 'admin' | 'member';
 }
 
-interface DailyUsageUser {
+interface UsageUser {
   _id: string;
   name: string;
   nickname?: string;
   avatar: string;
   sessionTimeToday: number;
+  sessionTimeMonthly: number;
+  sessionTimeYearly: number;
 }
 
 interface StatsData {
@@ -43,7 +45,9 @@ interface StatsData {
   activeUsersCount: number;
   activeUsers: ActiveUser[];
   registeredUsers: RegisteredUser[];
-  dailyUsage: DailyUsageUser[];
+  dailyUsage: UsageUser[];
+  monthlyUsage: UsageUser[];
+  yearlyUsage: UsageUser[];
   topPages: { path: string; count: number }[];
   roleStats: { name: string; value: number }[];
   genderStats: { name: string; value: number }[];
@@ -76,7 +80,8 @@ const formatTime = (seconds: number) => {
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   const remainingMins = mins % 60;
-  return `${hours}h ${remainingMins}m`;
+  if (hours > 0) return `${hours}h ${remainingMins}m`;
+  return `${mins}m`;
 };
 
 const safeDate = (dateVal: any) => {
@@ -94,6 +99,7 @@ export const AdminTrends: React.FC = () => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [usageType, setUsageType] = useState<'daily' | 'monthly' | 'yearly'>('daily');
 
   const togglePasswordVisibility = (id: string) => {
     setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
@@ -561,20 +567,40 @@ export const AdminTrends: React.FC = () => {
               </div>
            </div>
 
-           {/* Daily Usage List */}
+           {/* Usage Analysis List */}
            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-soft border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="p-6 border-b border-gray-50 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                 <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-widest text-xs">
-                    <Clock className="w-4 h-4 text-accent-orange" /> Today's Usage
-                 </h3>
-                 <span className="text-[10px] font-black text-gray-400">SESSION TIME</span>
+              <div className="p-6 border-b border-gray-50 dark:border-gray-700 space-y-4 bg-gray-50/50 dark:bg-gray-900/50">
+                 <div className="flex justify-between items-center">
+                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-widest text-xs">
+                       <Clock className="w-4 h-4 text-accent-orange" /> Usage Analysis
+                    </h3>
+                    <span className="text-[10px] font-black text-gray-400">SESSION TIME</span>
+                 </div>
+                 
+                 <div className="flex p-1 bg-gray-200 dark:bg-gray-800 rounded-xl">
+                    {(['daily', 'monthly', 'yearly'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setUsageType(type)}
+                        className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                          usageType === type 
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                 </div>
               </div>
+              
               <div className="p-6 max-h-[400px] overflow-y-auto custom-scrollbar">
                 <div className="space-y-4">
-                  {stats.dailyUsage.length === 0 ? (
-                    <div className="text-xs text-gray-500 py-4 text-center italic">No usage logged yet today</div>
+                  {(!stats[usageType === 'daily' ? 'dailyUsage' : usageType === 'monthly' ? 'monthlyUsage' : 'yearlyUsage'] || 
+                   stats[usageType === 'daily' ? 'dailyUsage' : usageType === 'monthly' ? 'monthlyUsage' : 'yearlyUsage'].length === 0) ? (
+                    <div className="text-xs text-gray-500 py-4 text-center italic">No usage logged for this period</div>
                   ) : (
-                    stats.dailyUsage.map(u => (
+                    stats[usageType === 'daily' ? 'dailyUsage' : usageType === 'monthly' ? 'monthlyUsage' : 'yearlyUsage'].map(u => (
                       <div key={u._id} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
                           {u.avatar ? (
@@ -586,11 +612,13 @@ export const AdminTrends: React.FC = () => {
                           )}
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{u.nickname || cleanName(u.name)}</p>
-                            <p className="text-[10px] text-gray-500 font-medium">Active today</p>
+                            <p className="text-[10px] text-gray-500 font-medium capitalize">{usageType} activity</p>
                           </div>
                         </div>
                         <div className="bg-gray-100 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-transparent group-hover:border-accent-orange/20 transition-all">
-                          <span className="text-xs font-black text-accent-orange">{formatTime(u.sessionTimeToday)}</span>
+                          <span className="text-xs font-black text-accent-orange">
+                            {formatTime(usageType === 'daily' ? u.sessionTimeToday : usageType === 'monthly' ? u.sessionTimeMonthly : u.sessionTimeYearly)}
+                          </span>
                         </div>
                       </div>
                     ))

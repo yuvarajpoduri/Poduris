@@ -5,60 +5,76 @@ interface ConfettiProps {
   count?: number;
   size?: number;
   colors?: string[];
+  trigger?: number;
 }
 
 const DEFAULT_COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#FF9F1C'];
 
 export const Confetti: React.FC<ConfettiProps> = ({ 
   count = 50, 
-  size = 10,
-  colors = DEFAULT_COLORS 
+  size = 8,
+  colors = DEFAULT_COLORS,
+  trigger = 0
 }) => {
   const [particles, setParticles] = useState<any[]>([]);
+  const [activeBatches, setActiveBatches] = useState<number[]>([]);
 
   useEffect(() => {
-    const newParticles = Array.from({ length: count }).map((_, i) => ({
-      id: i,
-      x: Math.random() * 100, // percentage
-      y: -20 - Math.random() * 100, // start above
-      rotation: Math.random() * 360,
-      scale: 0.5 + Math.random(),
-      color: colors[Math.floor(Math.random() * colors.length)],
-      delay: Math.random() * 2,
-      duration: 3 + Math.random() * 4,
-    }));
-    setParticles(newParticles);
-  }, [count, colors]);
+    if (trigger === 0 || activeBatches.includes(trigger) || activeBatches.length >= 3) return;
+
+    // Add this batch to tracking
+    setActiveBatches(prev => [...prev, trigger]);
+
+    const newParticles = Array.from({ length: count }).map((_, i) => {
+      const id = `${trigger}-${i}`;
+      return {
+        batchId: trigger,
+        id,
+        x: Math.random() * 100,
+        rotation: Math.random() * 360,
+        scale: 0.5 + Math.random() * 0.7,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: Math.random() * 1.5,
+        duration: 4 + Math.random() * 3,
+        sway: Math.random() * 30 - 15
+      };
+    });
+
+    setParticles(prev => [...prev, ...newParticles]);
+
+    // Cleanup batch after animation
+    const timer = setTimeout(() => {
+      setParticles(prev => prev.filter(p => p.batchId !== trigger));
+      setActiveBatches(prev => prev.filter(b => b !== trigger));
+    }, 10000); // 10 seconds is enough for most particles
+
+    return () => clearTimeout(timer);
+  }, [trigger, count, colors, activeBatches]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
       {particles.map((p) => (
         <motion.div
           key={p.id}
-          initial={{ 
-            top: `${p.y}%`, 
-            left: `${p.x}%`, 
-            opacity: 1, 
-            rotate: p.rotation,
-            scale: p.scale
-          }}
+          initial={{ top: '-10vh', left: `${p.x}vw`, opacity: 0, rotate: p.rotation, scale: p.scale }}
           animate={{ 
-            top: '120%', 
-            rotate: p.rotation + 360,
-            opacity: 0
+            top: '110vh', 
+            rotate: p.rotation + 720,
+            opacity: [0, 1, 1, 0],
+            x: [p.sway, -p.sway, p.sway] 
           }}
           transition={{ 
             duration: p.duration, 
-            repeat: Infinity, 
             ease: "linear", 
             delay: p.delay 
           }}
           style={{
             position: 'absolute',
-            width: size,
-            height: size,
+            width: size * p.scale,
+            height: (size * 0.4) * p.scale,
             backgroundColor: p.color,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px', // Mix of circles and squares
+            borderRadius: '1px',
+            willChange: 'transform, opacity'
           }}
         />
       ))}

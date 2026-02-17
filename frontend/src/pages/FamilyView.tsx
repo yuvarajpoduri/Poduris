@@ -96,7 +96,11 @@ export const FamilyView: React.FC = () => {
   }, []);
 
   if (loading || minLoading) {
-    return <LoadingScreen />;
+    return (
+      <Layout>
+        <LoadingScreen inline />
+      </Layout>
+    );
   }
 
   if (error) {

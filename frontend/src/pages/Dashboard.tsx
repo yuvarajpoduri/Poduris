@@ -9,13 +9,14 @@ import {
   Calendar as CalendarIcon, 
   Image as ImageIcon,
   ArrowRight,
+  Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { formatPoduriName } from "../utils/formatUtils";
-import { BirthdayBalloons } from "../components/BirthdayBalloons";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { Confetti } from "../components/Confetti";
 
 
 // --- Helper Components for the new Moody Look ---
@@ -51,8 +52,8 @@ const AvatarDisplay = ({ url, name, size = "md" }: { url?: string, name: string,
     );
 };
 
-const QuickLinkCard = ({ to, icon: Icon, title, desc, colorClass, delay }: any) => (
-    <Link to={to} className="block group">
+const QuickLinkCard = ({ to, icon: Icon, title, desc, colorClass, delay, id }: any) => (
+    <Link to={to} className="block group" id={id}>
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -117,7 +118,7 @@ export const Dashboard: React.FC = () => {
     upcomingAnniversaries: []
   });
   const [loading, setLoading] = useState(true);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -154,7 +155,7 @@ export const Dashboard: React.FC = () => {
       const lastShown = localStorage.getItem('balloons_shown_date');
       
       if (lastShown !== today) {
-        setShowCelebration(true);
+        setConfettiTrigger(prev => prev + 1);
         localStorage.setItem('balloons_shown_date', today);
       }
     }
@@ -168,20 +169,20 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   if (loading || minLoading) {
-    return <LoadingScreen />;
+    return (
+      <Layout>
+        <LoadingScreen inline />
+      </Layout>
+    );
   }
 
   return (
     <Layout>
-      <BirthdayBalloons active={showCelebration} />
-      
+      <Confetti trigger={confettiTrigger} count={100} />
       <div className="space-y-8 pb-12">
         
-
-
-        
         {/* HERO SECTION - Premium Deep Dark Theme */}
-        <div className="relative rounded-[2rem] overflow-hidden bg-black dark:bg-black text-white shadow-2xl ring-1 ring-white/10">
+        <div className="relative rounded-[2rem] overflow-hidden bg-black dark:bg-black text-white shadow-2xl ring-1 ring-white/10" id="hero-section">
             {/* Sophisticated Background */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/40 via-gray-900 to-black z-0"></div>
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
@@ -228,6 +229,18 @@ export const Dashboard: React.FC = () => {
                      >
                         Your family legacy spans <span className="text-white font-bold">{stats.totalGenerations} generations</span> with <span className="text-white font-bold">{stats.totalMembers} members</span> preserving your history.
                      </motion.p>
+
+                     <motion.button
+                        id="celebrate-btn"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        onClick={() => setConfettiTrigger(prev => prev + 1)}
+                        className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-95 group"
+                     >
+                        <Sparkles className="w-4 h-4 text-indigo-400 group-hover:animate-pulse" />
+                        <span>Celebrate Moment</span>
+                     </motion.button>
                 </div>
 
                 {/* Quick Action / Highlight Card */}
@@ -240,7 +253,7 @@ export const Dashboard: React.FC = () => {
                     >
                         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden group hover:bg-white/10 transition-colors duration-300">
                              <div className="flex items-center justify-between mb-6">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Up Next</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Upcoming</span>
                                 <div className="p-2 bg-indigo-500/20 rounded-full text-indigo-300">
                                     <CalendarIcon className="w-4 h-4" />
                                 </div>
@@ -260,11 +273,11 @@ export const Dashboard: React.FC = () => {
                             
                             <div className="flex items-stretch gap-2">
                                 <div className="flex-1 bg-black/20 rounded-xl p-3 text-center border border-white/5">
-                                    <p className="text-xl font-black text-white">
-                                        {allUpcoming[0].daysUntil === 0 ? "NOW" : allUpcoming[0].daysUntil}
+                                    <p className="text-xl font-black text-white uppercase">
+                                        {allUpcoming[0].daysUntil === 0 ? "LIVE" : allUpcoming[0].daysUntil}
                                     </p>
                                     <p className="text-[10px] text-white/40 font-bold uppercase">
-                                        {allUpcoming[0].daysUntil === 0 ? "Happy!" : "Days Left"}
+                                        {allUpcoming[0].daysUntil === 0 ? "Special" : "Days Left"}
                                     </p>
                                 </div>
                                 <div className="flex-1 bg-black/20 rounded-xl p-3 text-center border border-white/5 flex flex-col justify-center">
@@ -283,14 +296,16 @@ export const Dashboard: React.FC = () => {
         {/* NAVIGATION & STATS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <QuickLinkCard 
-                to="/family-tree"
+                id="link-lineage"
+                to="/family"
                 icon={GitBranch}
                 title="Lineage"
                 desc="Visualize your roots."
-                colorClass="bg-emerald-500" // Cleaner, solid accent color logic for hover
+                colorClass="bg-emerald-500"
                 delay={0.5}
             />
             <QuickLinkCard 
+                id="link-memories"
                 to="/gallery"
                 icon={ImageIcon}
                 title="Memories"
@@ -299,6 +314,7 @@ export const Dashboard: React.FC = () => {
                 delay={0.6}
             />
             <QuickLinkCard 
+                id="link-events"
                 to="/calendar"
                 icon={CalendarIcon}
                 title="Events"
@@ -348,6 +364,7 @@ export const Dashboard: React.FC = () => {
 
             {/* QUICK STATS / INFO */}
             <motion.div 
+               id="family-snapshot"
                initial={{ opacity: 0, x: 20 }}
                whileInView={{ opacity: 1, x: 0 }}
                viewport={{ once: true }}
@@ -383,7 +400,7 @@ export const Dashboard: React.FC = () => {
 
                 <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
                     <p className="text-xs text-center text-gray-500">
-                        Poduris Family Legacy &bull; {new Date().getFullYear()}
+                        Poduris Family Legacy • {new Date().getFullYear()}
                     </p>
                 </div>
             </motion.div>
