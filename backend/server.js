@@ -22,6 +22,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js"; // New
 import eventRoutes from "./routes/eventRoutes.js"; // Added event routes
 import wishRoutes from "./routes/wishRoutes.js";
+import statusRoutes from "./routes/statusRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 
 
@@ -128,6 +129,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/wishes", wishRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/status", statusRoutes);
 
 /* =======================
    HEALTH CHECK

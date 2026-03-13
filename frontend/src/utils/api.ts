@@ -316,4 +316,34 @@ export const announcementsAPI = {
   },
 };
 
+export interface StatusUser {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  statuses: Array<{
+    _id: string;
+    imageUrl: string;
+    createdAt: string;
+    viewedBy: string[];
+  }>;
+  latestAt: string;
+}
+
+export const statusAPI = {
+  getAll: async (): Promise<StatusUser[]> => {
+    const response = await api.get<ApiResponse<StatusUser[]>>("/status");
+    return response.data.data || [];
+  },
+  create: async (imageUrl: string, cloudinaryId: string): Promise<any> => {
+    const response = await api.post("/status", { imageUrl, cloudinaryId });
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/status/${id}`);
+  },
+  markViewed: async (id: string): Promise<void> => {
+    await api.put(`/status/${id}/view`);
+  },
+};
+
 export default api;

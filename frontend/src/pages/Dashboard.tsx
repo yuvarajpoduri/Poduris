@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
-import { familyMembersAPI } from "../utils/api";
-import type { DashboardStats } from "../types";
+import { familyMembersAPI, announcementsAPI, statusAPI } from "../utils/api";
+import type { DashboardStats, Announcement } from "../types";
+import type { StatusUser } from "../utils/api";
 import { format } from "date-fns";
 import { 
   Users, 
@@ -9,22 +10,38 @@ import {
   Calendar as CalendarIcon, 
   Image as ImageIcon,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Cake,
+  Heart,
+  Megaphone,
+  Video,
+  TreePine,
+  Clock
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { formatPoduriName } from "../utils/formatUtils";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { Confetti } from "../components/Confetti";
+import { BirthdayCard } from "../components/BirthdayCard";
+import { StatusRing, AddStatusButton, StatusViewer, StatusUploadModal } from "../components/Status";
 
 
-// --- Helper Components for the new Moody Look ---
+// --- Smooth stagger container ---
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } }
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } }
+};
+
+// --- Helper Components ---
 
 const AvatarDisplay = ({ url, name, size = "md" }: { url?: string, name: string, size?: "sm" | "md" | "lg" | "xl" }) => {
     const [error, setError] = useState(false);
-    
-    // Size maps
     const sizeClasses = {
         sm: "w-8 h-8 text-xs",
         md: "w-12 h-12 text-base",
@@ -34,127 +51,164 @@ const AvatarDisplay = ({ url, name, size = "md" }: { url?: string, name: string,
 
     if (url && !error) {
         return (
-            <div className={`${sizeClasses[size]} relative rounded-full overflow-hidden border-2 border-white dark:border-white/10 shadow-sm shrink-0`}>
-                <img 
-                    src={url} 
-                    alt={name}
-                    className="w-full h-full object-cover"
-                    onError={() => setError(true)}
-                />
+            <div className={`${sizeClasses[size]} relative rounded-full overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm shrink-0`}>
+                <img src={url} alt={name} className="w-full h-full object-cover" onError={() => setError(true)} />
             </div>
         );
     }
-
     return (
-        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold border-2 border-white dark:border-white/10 shadow-sm shrink-0`}>
+        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white font-bold border-2 border-white dark:border-gray-800 shadow-sm shrink-0`}>
             {name?.charAt(0)?.toUpperCase() || "?"}
         </div>
     );
 };
 
-const QuickLinkCard = ({ to, icon: Icon, title, desc, colorClass, delay, id }: any) => (
-    <Link to={to} className="block group" id={id}>
-        <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay }}
-            className="h-full p-6 rounded-[2rem] bg-white dark:bg-black border border-gray-100 dark:border-white/10 shadow-xl shadow-gray-200/50 dark:shadow-none transition-all duration-300 relative overflow-hidden active:scale-95"
-        >
-            {/* Background Splash - Always visible now */}
-            <div className={`absolute top-0 right-0 w-48 h-48 opacity-10 rounded-full blur-3xl -mr-10 -mt-10 ${colorClass}`}></div>
-            
-            <div className="relative z-10 flex flex-col h-full">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg ${colorClass}`}>
-                    <Icon className="w-7 h-7" />
+// Stat Card
+const StatCard = ({ icon: Icon, value, label, accent }: any) => (
+    <motion.div variants={fadeUp} className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${accent}`}>
+            <Icon className="w-5 h-5 text-white" />
+        </div>
+        <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{value}</p>
+        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wide">{label}</p>
+    </motion.div>
+);
+
+// Quick Link Card
+const QuickLinkCard = ({ to, icon: Icon, title, desc, accent, id }: any) => (
+    <motion.div variants={fadeUp}>
+        <Link to={to} className="block group" id={id}>
+            <div className="h-full p-5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all duration-300 relative overflow-hidden active:scale-[0.98]">
+                <div className="relative z-10 flex flex-col h-full">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white shadow-md ${accent}`}>
+                        <Icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{title}</h3>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mb-3 flex-1 leading-relaxed">{desc}</p>
+                    <div className="flex items-center text-sm font-semibold text-orange-500 dark:text-orange-400 mt-auto group-hover:translate-x-1 transition-transform duration-300">
+                        <span>Explore</span>
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                    </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex-1 leading-relaxed">
-                    {desc}
-                </p>
-                
-                <div className="flex items-center text-sm font-bold text-gray-900 dark:text-white mt-auto">
-                    <span>Open</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
+            </div>
+        </Link>
+    </motion.div>
+);
+
+// Event Row
+const EventRow = ({ title, date, daysUntil, type, avatar, index }: any) => (
+    <motion.div
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.35, delay: index * 0.06, ease: "easeOut" }}
+        className="flex items-center gap-4 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 group cursor-pointer"
+    >
+        <AvatarDisplay url={avatar} name={title} size="md" />
+        <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-gray-900 dark:text-white truncate">{title}</h4>
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+               <span className={`uppercase tracking-wider font-semibold ${type === 'birthday' ? 'text-orange-500' : 'text-pink-500'}`}>
+                   {type === 'birthday' ? '🎂 Birthday' : '💍 Anniversary'}
+               </span>
+               <span>•</span>
+               <span>{format(new Date(date), "MMM d")}</span>
+            </div>
+        </div>
+        <div className="text-right shrink-0">
+             <span className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors duration-200 ${
+                 daysUntil === 0 
+                    ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+             }`}>
+                 {daysUntil === 0 ? '🎉 Today!' : `${daysUntil}d`}
+             </span>
+        </div>
+    </motion.div>
+);
+
+// Announcement card
+const AnnouncementCard = ({ announcement, index }: { announcement: Announcement, index: number }) => {
+    const categoryEmoji: Record<string, string> = {
+        birthday: '🎂', anniversary: '💍', event: '📅', news: '📰', other: '📢'
+    };
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.08 }}
+            className="flex items-start gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+        >
+            <span className="text-xl shrink-0 mt-0.5">{categoryEmoji[announcement.category] || '📢'}</span>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-gray-900 dark:text-white truncate text-sm">{announcement.title}</h4>
+                <p className="text-xs text-gray-400 dark:text-gray-500 line-clamp-2 mt-0.5">{announcement.content}</p>
+                <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+                    <span className="font-medium">{formatPoduriName(announcement.createdBy.name)}</span>
+                    <span>•</span>
+                    <span>{format(new Date(announcement.createdAt), "MMM d")}</span>
                 </div>
             </div>
         </motion.div>
-    </Link>
-);
+    );
+};
 
-const EventRow = ({ title, date, daysUntil, type, avatar }: any) => (
-    <div className="flex items-center gap-4 p-4 rounded-3xl bg-gray-50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-transparent hover:border-gray-200 dark:hover:border-white/5 transition-all duration-300 group cursor-pointer">
-        <AvatarDisplay url={avatar} name={title} size="md" />
-        
-        <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-gray-900 dark:text-white truncate text-lg">{title}</h4>
-            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mt-0.5">
-               <span className={`uppercase tracking-wider ${
-                   type === 'birthday' ? 'text-orange-500' : 'text-pink-500'
-               }`}>{type}</span>
-               <span className="text-gray-300 dark:text-gray-600">•</span>
-               <span className="text-gray-400">{format(new Date(date), "MMM d")}</span>
-            </div>
-        </div>
-        
-        <div className="text-right shrink-0">
-             <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide ${
-                 daysUntil === 0 
-                    ? 'bg-gradient-to-r from-green-400 to-emerald-600 text-white shadow-lg shadow-green-500/30' 
-                    : 'bg-white dark:bg-black text-gray-900 dark:text-white border border-gray-100 dark:border-white/10'
-             }`}>
-                 {daysUntil === 0 ? 'Today' : `${daysUntil}d`}
-             </span>
-        </div>
-    </div>
-);
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   
   const [stats, setStats] = useState<DashboardStats>({
-    totalMembers: 0,
-    totalGenerations: 0,
-    upcomingBirthdays: [],
-    upcomingAnniversaries: []
+    totalMembers: 0, totalGenerations: 0, upcomingBirthdays: [], upcomingAnniversaries: []
   });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [statuses, setStatuses] = useState<StatusUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [showStatusUpload, setShowStatusUpload] = useState(false);
+  const [viewingStatusIdx, setViewingStatusIdx] = useState<number | null>(null);
 
-  // Time-based greeting
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+  const greetingEmoji = hour < 12 ? "☀️" : hour < 18 ? "🌤️" : "🌙";
+
+  const fetchStatuses = async () => {
+    try { setStatuses(await statusAPI.getAll()); } catch (err) { console.error("Failed to fetch statuses:", err); }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const statsData = await familyMembersAPI.getDashboardStats();
+        const [statsData, announcementsData] = await Promise.all([
+          familyMembersAPI.getDashboardStats(),
+          announcementsAPI.getAll().catch(() => [])
+        ]);
         setStats(statsData);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
-      } finally {
-        setLoading(false);
-      }
+        setAnnouncements(announcementsData);
+      } catch (error) { console.error("Failed to fetch dashboard data", error); }
+      finally { setLoading(false); }
     };
     fetchData();
+    fetchStatuses();
   }, []);
 
-  // Combine and sort events
+  // Listen for status uploads from anywhere
+  useEffect(() => {
+    const handler = () => fetchStatuses();
+    window.addEventListener('status-uploaded', handler);
+    return () => window.removeEventListener('status-uploaded', handler);
+  }, []);
+
   const allUpcoming = [
       ...stats.upcomingBirthdays.map(b => ({ ...b, type: 'birthday' as const, date: b.nextBirthday, title: formatPoduriName(b.name), avatar: (b as any).avatar })),
       ...stats.upcomingAnniversaries.map(a => ({ ...a, type: 'anniversary' as const, date: a.anniversaryDate, title: `${formatPoduriName(a.member1)} & ${formatPoduriName(a.member2)}`, avatar: undefined as string | undefined }))
-  ].filter(e => e.daysUntil >= 0)
-   .sort((a, b) => a.daysUntil - b.daysUntil)
-   .slice(0, 5); // Just show top 5
+  ].filter(e => e.daysUntil >= 0).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 6);
 
   const birthdayPeople = allUpcoming.filter(e => e.type === 'birthday' && e.daysUntil === 0);
 
   useEffect(() => {
     if (birthdayPeople.length > 0) {
       const today = new Date().toDateString();
-      const lastShown = localStorage.getItem('balloons_shown_date');
-      
-      if (lastShown !== today) {
+      if (localStorage.getItem('balloons_shown_date') !== today) {
         setConfettiTrigger(prev => prev + 1);
         localStorage.setItem('balloons_shown_date', today);
       }
@@ -162,251 +216,263 @@ export const Dashboard: React.FC = () => {
   }, [birthdayPeople.length]);
 
   const [minLoading, setMinLoading] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setMinLoading(false), 2000); return () => clearTimeout(t); }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setMinLoading(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  const currentUserId = user?.linkedFamilyMemberId?.toString() || user?.id;
+  const ownStatusExists = statuses.some(s => s.userId === currentUserId);
 
   if (loading || minLoading) {
-    return (
-      <Layout>
-        <LoadingScreen inline />
-      </Layout>
-    );
+    return <Layout><LoadingScreen inline /></Layout>;
   }
 
   return (
     <Layout>
       <Confetti trigger={confettiTrigger} count={100} />
-      <div className="space-y-8 pb-12">
+      <motion.div 
+        initial="hidden" 
+        animate="show" 
+        variants={stagger} 
+        className="space-y-6 pb-12"
+      >
         
-        {/* HERO SECTION - Premium Deep Dark Theme */}
-        <div className="relative rounded-[2rem] overflow-hidden bg-black dark:bg-black text-white shadow-2xl ring-1 ring-white/10" id="hero-section">
-            {/* Sophisticated Background */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/40 via-gray-900 to-black z-0"></div>
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[80px] -ml-20 -mb-20 pointer-events-none"></div>
-            
-            {/* Grid Pattern overlay */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-
-            <div className="relative z-10 p-8 sm:p-12 lg:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-10">
-                <div className="space-y-6 max-w-2xl relative">
-                     <motion.div 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-xs font-bold tracking-widest uppercase text-indigo-300 shadow-lg"
-                     >
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                        <span>Family Hub</span>
-                     </motion.div>
-                     
-                     <div className="space-y-2">
-                         <motion.h1 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tighter leading-none"
-                         >
-                            {greeting},
-                         </motion.h1>
-                         <motion.h2
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-3xl sm:text-4xl lg:text-5xl font-thin tracking-tight text-white/60"
-                         >
-                            {user?.name ? formatPoduriName(user.name).split(' ')[0] : 'Friend'}.
-                         </motion.h2>
-                     </div>
-                     
-                     <motion.p 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-lg text-gray-400 font-medium max-w-lg leading-relaxed pl-1 border-l-4 border-indigo-500/50"
-                     >
-                        Your family legacy spans <span className="text-white font-bold">{stats.totalGenerations} generations</span> with <span className="text-white font-bold">{stats.totalMembers} members</span> preserving your history.
-                     </motion.p>
-
-                     <motion.button
-                        id="celebrate-btn"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        onClick={() => setConfettiTrigger(prev => prev + 1)}
-                        className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-95 group"
-                     >
-                        <Sparkles className="w-4 h-4 text-indigo-400 group-hover:animate-pulse" />
-                        <span>Celebrate Moment</span>
-                     </motion.button>
+        {/* HERO GREETING */}
+        <motion.div 
+            variants={fadeUp}
+            className="relative rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-6 sm:p-8"
+            id="hero-section"
+        >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl">{greetingEmoji}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400">Family Hub</span>
+                    </div>
+                    <h1 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                        {greeting}, {user?.name ? formatPoduriName(user.name).split(' ')[0] : 'Friend'}!
+                    </h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base max-w-lg">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">{stats.totalMembers} members</span> across <span className="font-semibold text-gray-700 dark:text-gray-300">{stats.totalGenerations} generations</span> — your family story continues.
+                    </p>
                 </div>
+                <motion.button
+                    id="celebrate-btn"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setConfettiTrigger(prev => prev + 1)}
+                    className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl text-sm font-bold transition-colors duration-200 shadow-md shadow-orange-200/50 dark:shadow-orange-900/20 self-start sm:self-center"
+                >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Celebrate 🎉</span>
+                </motion.button>
+            </div>
+        </motion.div>
 
-                {/* Quick Action / Highlight Card */}
-                {allUpcoming.length > 0 && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="w-full md:w-80"
+        {/* STATUS STORIES ROW */}
+        {(statuses.length > 0 || !ownStatusExists) && (
+            <motion.div variants={fadeUp} className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 px-1">Stories</h3>
+                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
+                    {!ownStatusExists && (
+                        <AddStatusButton onClick={() => setShowStatusUpload(true)} />
+                    )}
+                    {statuses.map((su, idx) => (
+                        <StatusRing
+                            key={su.userId}
+                            statusUser={su}
+                            isOwn={su.userId === currentUserId}
+                            onClick={() => {
+                                if (su.userId === currentUserId && su.statuses.length === 0) {
+                                    setShowStatusUpload(true);
+                                } else {
+                                    setViewingStatusIdx(idx);
+                                }
+                            }}
+                        />
+                    ))}
+                </div>
+            </motion.div>
+        )}
+
+        {/* TODAY'S BIRTHDAY */}
+        <AnimatePresence>
+            {birthdayPeople.length > 0 && (
+                <motion.div 
+                    variants={fadeUp}
+                    initial="hidden" animate="show" exit="hidden"
+                    className="space-y-3"
+                >
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 px-1 flex items-center gap-2">
+                        <Cake className="w-4 h-4 text-orange-400" /> Today's Birthday
+                    </h3>
+                    <div className="space-y-4">
+                        {birthdayPeople.map((person, i) => (
+                            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.4 }}>
+                                <BirthdayCard 
+                                    memberName={person.title}
+                                    avatar={person.avatar}
+                                    isCurrentUser={user?.linkedFamilyMemberId === (person as any).id}
+                                    recipientId={(person as any).id}
+                                />
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* STATS ROW */}
+        <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard icon={Users} value={stats.totalMembers} label="Members" accent="bg-orange-500" />
+            <StatCard icon={GitBranch} value={stats.totalGenerations} label="Generations" accent="bg-amber-500" />
+            <StatCard icon={Cake} value={stats.upcomingBirthdays.length} label="Birthdays" accent="bg-rose-500" />
+            <StatCard icon={Heart} value={stats.upcomingAnniversaries.length} label="Anniversaries" accent="bg-pink-500" />
+        </motion.div>
+
+        {/* QUICK NAVIGATION */}
+        <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <QuickLinkCard id="link-lineage" to="/family" icon={TreePine} title="Family Tree" desc="Your ancestral roots." accent="bg-orange-500" />
+            <QuickLinkCard id="link-memories" to="/gallery" icon={ImageIcon} title="Gallery" desc="Cherished moments." accent="bg-rose-500" />
+            <QuickLinkCard id="link-events" to="/calendar" icon={CalendarIcon} title="Calendar" desc="Celebrations ahead." accent="bg-amber-500" />
+            <QuickLinkCard id="link-call" to="/call" icon={Video} title="Video Call" desc="Connect with family." accent="bg-teal-500" />
+        </motion.div>
+
+        {/* CELEBRATIONS & ANNOUNCEMENTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming Celebrations */}
+            <motion.div 
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               viewport={{ once: true, margin: "-40px" }}
+               transition={{ duration: 0.5, ease: "easeOut" }}
+               className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-gray-800"
+            >
+                <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <CalendarIcon className="w-5 h-5 text-orange-500" />
+                        Upcoming Celebrations
+                    </h3>
+                    <Link to="/calendar" className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 dark:text-orange-400 transition-colors duration-200">
+                        <span>View All</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                </div>
+                <div className="space-y-2">
+                    {allUpcoming.length > 0 ? (
+                        allUpcoming.map((event, i) => (
+                            <EventRow 
+                                key={i} index={i}
+                                title={event.title} date={event.date}
+                                daysUntil={event.daysUntil} type={event.type}
+                                avatar={event.avatar} 
+                            />
+                        ))
+                    ) : (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="flex flex-col items-center justify-center py-10 text-center text-gray-400 dark:text-gray-600">
+                            <CalendarIcon className="w-12 h-12 mb-3 opacity-20" />
+                            <p className="font-medium text-sm">No upcoming events</p>
+                        </motion.div>
+                    )}
+                </div>
+            </motion.div>
+
+            {/* Sidebar */}
+            <div className="space-y-4">
+                {/* Family Snapshot */}
+                <motion.div 
+                   id="family-snapshot"
+                   initial={{ opacity: 0, y: 20 }}
+                   whileInView={{ opacity: 1, y: 0 }}
+                   viewport={{ once: true, margin: "-40px" }}
+                   transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+                   className="bg-gray-900 dark:bg-gray-900 text-white rounded-2xl p-5 shadow-sm relative overflow-hidden border border-gray-800"
+                >
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-[60px] -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="relative z-10">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-5 flex items-center gap-2">
+                            <TreePine className="w-4 h-4 text-orange-500" /> Family Snapshot
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                 <p className="text-4xl font-black tracking-tighter">{stats.totalMembers}</p>
+                                 <p className="text-sm font-medium text-gray-400">Family Members</p>
+                            </div>
+                            <div className="h-px bg-white/10"></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">
+                                     <p className="text-xl font-bold">{stats.totalGenerations}</p>
+                                     <p className="text-gray-500 text-[10px] font-bold uppercase">Generations</p>
+                                </div>
+                                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">
+                                     <p className="text-xl font-bold">{stats.upcomingBirthdays.length}</p>
+                                     <p className="text-gray-500 text-[10px] font-bold uppercase">Birthdays</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-white/10">
+                            <p className="text-[10px] text-center text-gray-600 font-medium">Poduri's Family • {new Date().getFullYear()}</p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Announcements */}
+                {announcements.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-40px" }}
+                        transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                        className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800"
                     >
-                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden group hover:bg-white/10 transition-colors duration-300">
-                             <div className="flex items-center justify-between mb-6">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Upcoming</span>
-                                <div className="p-2 bg-indigo-500/20 rounded-full text-indigo-300">
-                                    <CalendarIcon className="w-4 h-4" />
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-4 mb-5">
-                                <AvatarDisplay url={allUpcoming[0].avatar} name={allUpcoming[0].title} size="md" />
-                                <div>
-                                    <p className="font-bold text-xl leading-none mb-1">{allUpcoming[0].title}</p>
-                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${
-                                        allUpcoming[0].type === 'birthday' ? 'bg-orange-500/20 text-orange-300' : 'bg-pink-500/20 text-pink-300'
-                                    }`}>
-                                        {allUpcoming[0].type}
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-stretch gap-2">
-                                <div className="flex-1 bg-black/20 rounded-xl p-3 text-center border border-white/5">
-                                    <p className="text-xl font-black text-white uppercase">
-                                        {allUpcoming[0].daysUntil === 0 ? "LIVE" : allUpcoming[0].daysUntil}
-                                    </p>
-                                    <p className="text-[10px] text-white/40 font-bold uppercase">
-                                        {allUpcoming[0].daysUntil === 0 ? "Special" : "Days Left"}
-                                    </p>
-                                </div>
-                                <div className="flex-1 bg-black/20 rounded-xl p-3 text-center border border-white/5 flex flex-col justify-center">
-                                    <p className="text-xs font-bold text-white/80">
-                                        {format(new Date(allUpcoming[0].date), "MMM d")}
-                                    </p>
-                                    <p className="text-[10px] text-white/40 font-bold uppercase">Date</p>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Megaphone className="w-4 h-4 text-orange-500" /> News
+                            </h3>
+                            <Link to="/announcements" className="text-[10px] font-bold text-orange-500 hover:text-orange-600 dark:text-orange-400 uppercase tracking-wide transition-colors duration-200">See All</Link>
+                        </div>
+                        <div className="space-y-2">
+                            {announcements.slice(0, 3).map((ann, i) => (
+                                <AnnouncementCard key={ann._id} announcement={ann} index={i} />
+                            ))}
                         </div>
                     </motion.div>
                 )}
             </div>
         </div>
 
-        {/* NAVIGATION & STATS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <QuickLinkCard 
-                id="link-lineage"
-                to="/family"
-                icon={GitBranch}
-                title="Lineage"
-                desc="Visualize your roots."
-                colorClass="bg-emerald-500"
-                delay={0.5}
-            />
-            <QuickLinkCard 
-                id="link-memories"
-                to="/gallery"
-                icon={ImageIcon}
-                title="Memories"
-                desc="Cherished moments."
-                colorClass="bg-blue-500"
-                delay={0.6}
-            />
-            <QuickLinkCard 
-                id="link-events"
-                to="/calendar"
-                icon={CalendarIcon}
-                title="Events"
-                desc="Upcoming celebrations."
-                colorClass="bg-orange-500"
-                delay={0.7}
-            />
-        </div>
+        {/* FOOTER DATE */}
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            whileInView={{ opacity: 1 }} 
+            viewport={{ once: true }} 
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-center py-4"
+        >
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-600">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="font-medium">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
+            </div>
+        </motion.div>
 
-        {/* UPCOMING EVENTS LIST */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <motion.div 
-               initial={{ opacity: 0, y: 20 }}
-               whileInView={{ opacity: 1, y: 0 }}
-               viewport={{ once: true }}
-               className="lg:col-span-2 bg-white dark:bg-black rounded-[2rem] p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-white/10"
-            >
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <span>Celebrations</span>
-                    </h3>
-                    <Link to="/calendar" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                        <ArrowRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                    </Link>
-                </div>
-                
-                <div className="space-y-4">
-                    {allUpcoming.length > 0 ? (
-                        allUpcoming.map((event, i) => (
-                            <EventRow 
-                                key={i}
-                                title={event.title}
-                                date={event.date}
-                                daysUntil={event.daysUntil}
-                                type={event.type}
-                                avatar={event.avatar} 
-                            />
-                        ))
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400 dark:text-gray-600">
-                            <CalendarIcon className="w-16 h-16 mb-4 opacity-20" />
-                            <p className="font-medium">No upcoming events found.</p>
-                        </div>
-                    )}
-                </div>
-            </motion.div>
+      </motion.div>
 
-            {/* QUICK STATS / INFO */}
-            <motion.div 
-               id="family-snapshot"
-               initial={{ opacity: 0, x: 20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-               transition={{ delay: 0.2 }}
-               className="bg-black text-white rounded-[2rem] p-8 shadow-xl relative overflow-hidden flex flex-col"
-            >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-                
-                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-8 relative z-10">Snapshot</h3>
-                
-                <div className="space-y-8 flex-1 relative z-10">
-                    <div>
-                         <p className="text-6xl font-black tracking-tighter mb-2">{stats.totalMembers}</p>
-                         <div className="flex items-center gap-2 text-indigo-300">
-                             <Users className="w-4 h-4" />
-                             <span className="font-bold text-sm uppercase tracking-wide">Family Members</span>
-                         </div>
-                    </div>
-                    
-                    <div className="h-px bg-white/10"></div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                             <p className="text-3xl font-bold text-white">{stats.totalGenerations}</p>
-                             <p className="text-gray-500 text-xs font-bold uppercase mt-1">Generations</p>
-                        </div>
-                        <div>
-                             <p className="text-3xl font-bold text-white">{stats.upcomingBirthdays.length}</p>
-                             <p className="text-gray-500 text-xs font-bold uppercase mt-1">Birthdays</p>
-                        </div>
-                    </div>
-                </div>
+      {/* Status Upload Modal */}
+      <StatusUploadModal
+        isOpen={showStatusUpload}
+        onClose={() => setShowStatusUpload(false)}
+        onUploaded={() => { setShowStatusUpload(false); fetchStatuses(); }}
+      />
 
-                <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
-                    <p className="text-xs text-center text-gray-500">
-                        Poduris Family Legacy • {new Date().getFullYear()}
-                    </p>
-                </div>
-            </motion.div>
-        </div>
-
-      </div>
+      {/* Status Viewer */}
+      <AnimatePresence>
+          {viewingStatusIdx !== null && (
+              <StatusViewer
+                allUsers={statuses}
+                initialUserIndex={viewingStatusIdx}
+                onClose={() => setViewingStatusIdx(null)}
+                onDeleted={fetchStatuses}
+              />
+          )}
+      </AnimatePresence>
     </Layout>
   );
 };
